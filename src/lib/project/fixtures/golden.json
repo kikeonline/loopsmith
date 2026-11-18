@@ -1,0 +1,294 @@
+[
+  {
+    "name": "native flags and metadata",
+    "code": "// @loopsmith-track/v1 {\"id\":\"drum-id\",\"name\":\"Kick\"}\n_Sdrums: s(\"bd ~\");",
+    "project": {
+      "version": 1,
+      "items": [
+        {
+          "kind": "track",
+          "id": "drum-id",
+          "key": "drums",
+          "name": "Kick",
+          "source": {
+            "kind": "drums",
+            "pattern": {
+              "kind": "mini",
+              "rows": [
+                [
+                  {
+                    "kind": "atom",
+                    "value": "bd"
+                  },
+                  {
+                    "kind": "rest"
+                  }
+                ]
+              ]
+            }
+          },
+          "calls": [],
+          "muted": true,
+          "solo": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "ordered numeric opaque expression",
+    "code": "// @loopsmith-track/v1 {\"id\":\"a\",\"name\":\"A\"}\na: s(\"bd\").gain(.5).jux( rev ).lpf(sine.range(200,800));",
+    "project": {
+      "version": 1,
+      "items": [
+        {
+          "kind": "track",
+          "id": "a",
+          "key": "a",
+          "name": "A",
+          "source": {
+            "kind": "drums",
+            "pattern": {
+              "kind": "mini",
+              "rows": [
+                [
+                  {
+                    "kind": "atom",
+                    "value": "bd"
+                  }
+                ]
+              ]
+            }
+          },
+          "calls": [
+            {
+              "kind": "effect",
+              "name": "gain",
+              "value": {
+                "kind": "number",
+                "value": 0.5
+              }
+            },
+            {
+              "kind": "opaque",
+              "code": ".jux( rev )"
+            },
+            {
+              "kind": "effect",
+              "name": "lpf",
+              "value": {
+                "kind": "expression",
+                "code": "sine.range(200,800)"
+              }
+            }
+          ],
+          "muted": false,
+          "solo": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "tempo and raw preamble",
+    "code": "const bpm = 120;\nsetcpm(bpm/4);\n// @loopsmith-track/v1 {\"id\":\"a\",\"name\":\"A\"}\na: s(\"bd\");",
+    "project": {
+      "version": 1,
+      "items": [
+        {
+          "kind": "raw",
+          "code": "const bpm = 120;"
+        },
+        {
+          "kind": "tempo",
+          "unit": "cpm",
+          "value": {
+            "kind": "expression",
+            "code": "bpm/4"
+          }
+        },
+        {
+          "kind": "track",
+          "id": "a",
+          "key": "a",
+          "name": "A",
+          "source": {
+            "kind": "drums",
+            "pattern": {
+              "kind": "mini",
+              "rows": [
+                [
+                  {
+                    "kind": "atom",
+                    "value": "bd"
+                  }
+                ]
+              ]
+            }
+          },
+          "calls": [],
+          "muted": false,
+          "solo": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "opaque mini",
+    "code": "// @loopsmith-track/v1 {\"id\":\"a\",\"name\":\"A\"}\na: s(\"bd(3,8)\");",
+    "project": {
+      "version": 1,
+      "items": [
+        {
+          "kind": "track",
+          "id": "a",
+          "key": "a",
+          "name": "A",
+          "source": {
+            "kind": "drums",
+            "pattern": {
+              "kind": "opaque",
+              "code": "bd(3,8)"
+            }
+          },
+          "calls": [],
+          "muted": false,
+          "solo": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "raw track",
+    "code": "// @loopsmith-track/v1 {\"id\":\"a\",\"name\":\"Custom\"}\na: stack(s(\"bd\"),note(\"c3\"));",
+    "project": {
+      "version": 1,
+      "items": [
+        {
+          "kind": "track",
+          "id": "a",
+          "key": "a",
+          "name": "Custom",
+          "source": {
+            "kind": "raw",
+            "code": "stack(s(\"bd\"),note(\"c3\"))"
+          },
+          "calls": [],
+          "muted": false,
+          "solo": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "explicit raw supported code",
+    "code": "// @loopsmith-track/v1 {\"id\":\"a\",\"name\":\"Custom\",\"raw\":true}\na: s(\"bd\");",
+    "project": {
+      "version": 1,
+      "items": [
+        {
+          "kind": "track",
+          "id": "a",
+          "key": "a",
+          "name": "Custom",
+          "source": {
+            "kind": "raw",
+            "code": "s(\"bd\")"
+          },
+          "calls": [],
+          "muted": false,
+          "solo": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "melody",
+    "code": "// @loopsmith-track/v1 {\"id\":\"lead\",\"name\":\"Lead\"}\nlead: n(\"0 ~ 2\").scale(\"C:minor\").s(\"sine\");",
+    "project": {
+      "version": 1,
+      "items": [
+        {
+          "kind": "track",
+          "id": "lead",
+          "key": "lead",
+          "name": "Lead",
+          "source": {
+            "kind": "notes",
+            "mode": "n",
+            "pattern": {
+              "kind": "mini",
+              "rows": [
+                [
+                  {
+                    "kind": "atom",
+                    "value": "0"
+                  },
+                  {
+                    "kind": "rest"
+                  },
+                  {
+                    "kind": "atom",
+                    "value": "2"
+                  }
+                ]
+              ]
+            }
+          },
+          "calls": [
+            {
+              "kind": "control",
+              "name": "scale",
+              "value": "C:minor"
+            },
+            {
+              "kind": "control",
+              "name": "s",
+              "value": "sine"
+            }
+          ],
+          "muted": false,
+          "solo": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "comments as raw blocks",
+    "code": "// before\n// @loopsmith-track/v1 {\"id\":\"a\",\"name\":\"A\"}\na: s(\"bd\");\n/* after */",
+    "project": {
+      "version": 1,
+      "items": [
+        {
+          "kind": "raw",
+          "code": "// before"
+        },
+        {
+          "kind": "track",
+          "id": "a",
+          "key": "a",
+          "name": "A",
+          "source": {
+            "kind": "drums",
+            "pattern": {
+              "kind": "mini",
+              "rows": [
+                [
+                  {
+                    "kind": "atom",
+                    "value": "bd"
+                  }
+                ]
+              ]
+            }
+          },
+          "calls": [],
+          "muted": false,
+          "solo": false
+        },
+        {
+          "kind": "raw",
+          "code": "/* after */"
+        }
+      ]
+    }
+  }
+]

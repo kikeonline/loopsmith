@@ -148,6 +148,7 @@ Strudel and its audio libraries are AGPL-3.0-or-later, compatible with the appli
 | estree-walker | 3.0.3 | MIT | runtime |
 | esutils | 2.0.3 | BSD-2-Clause | runtime |
 | expect-type | 1.4.0 | Apache-2.0 | development |
+| fast-check | 4.10.2 | MIT | development |
 | fdir | 6.5.0 | MIT | development |
 | fraction.js | 5.3.4 | MIT | runtime |
 | fsevents | 2.3.3 | MIT | development |
@@ -178,6 +179,7 @@ Strudel and its audio libraries are AGPL-3.0-or-later, compatible with the appli
 | picocolors | 1.1.1 | ISC | development |
 | picomatch | 4.0.7 | MIT | development |
 | postcss | 8.5.33 | MIT | development |
+| pure-rand | 8.4.2 | MIT | development |
 | readdirp | 4.1.2 | MIT | development |
 | rolldown | 1.2.19 | MIT | development |
 | sade | 1.8.1 | MIT | development |

@@ -35,7 +35,7 @@ The static SPA is emitted to `build/`. Configure your static host to serve `inde
 
 M0 scope comes from GitHub [#1](https://github.com/kikeonline/loopsmith/issues/1), [#2](https://github.com/kikeonline/loopsmith/issues/2), [#3](https://github.com/kikeonline/loopsmith/issues/3), and confirmed owner decisions [#23](https://github.com/kikeonline/loopsmith/issues/23). The repository was initially empty and the referenced original handoff/README was unavailable. Findings cover every verification topic named in those issues; the absent handoff cannot be independently checked for additional items.
 
-M1 has not started. Its canonical model, parser, deterministic generator, preservation invariants, and visual editing belong to subsequent milestone gates.
+M1 implements the canonical model, Acorn parser, deterministic generator, structural mini notation, source-range edits, stable IDs, and preservation invariants in `src/lib/project/`. See [the model contract and M1 evidence](docs/m1-model.md). The M0 page remains the playback spike; connecting visual editing and two-way synchronization is M2 scope. M0's outstanding listening/handoff checks remain recorded in the historical spike findings; the user explicitly authorized proceeding with M1.
 
 ## License
 

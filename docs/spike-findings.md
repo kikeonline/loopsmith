@@ -124,3 +124,8 @@ All lockfile packages declare a license. Runtime Strudel/Kabelsalat/Superdough p
 `npm audit` reports a high-severity picomatch ReDoS advisory (GHSA-fc5q-39xc-vjpf), propagated through nine tooling dependency entries. Installed picomatch 4.0.7 is also the latest registry version at verification; there is no patched upgrade to apply. `npm audit --omit=dev` reports zero runtime vulnerabilities. Recheck the tooling advisory before exposing development/build tooling to untrusted input. No forced downgrades were applied.
 
 Open acceptance items: human listening evidence; original handoff availability/completeness. Publish the matching source before any public deployment. M0 findings are delivered in this document; M1 remains unstarted.
+
+
+## Subsequent milestone authorization
+
+After these findings were reported and published, the user explicitly requested implementation of the next milestone. M1 therefore proceeded with that authorization. This does not convert the pending M0 listening check or original-handoff completeness check into passed checks. See [M1 model and verification](m1-model.md) for the subsequent work.

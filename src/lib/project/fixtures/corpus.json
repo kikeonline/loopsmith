@@ -1,0 +1,298 @@
+[
+  {
+    "name": "basic",
+    "code": "s(\"bd sd cp hh\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "rest",
+    "code": "drums: s(\"bd ~ sd ~\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "subsequence",
+    "code": "s(\"bd [sd cp]\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "fast repeat",
+    "code": "s(\"bd*4 hh\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "alternation",
+    "code": "s(\"<bd sd> hh\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "elongation",
+    "code": "s(\"bd@3 sd\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "replication",
+    "code": "s(\"bd!3 sd\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "sample index",
+    "code": "s(\"bd:3 sd:1\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "nested parallel",
+    "code": "s(\"[bd sd, hh*4] cp\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "multiple rows",
+    "code": "s(\"bd sd, hh*8\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "notes",
+    "code": "lead: note(\"c3 ~ [e3 g3]\").s(\"sine\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "scale",
+    "code": "lead: n(\"0 2 4 6\").scale(\"C:minor\").s(\"sawtooth\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "numeric effects",
+    "code": "s(\"bd\").gain(0.5).pan(-0.25).lpf(800)",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "negative numeric",
+    "code": "s(\"bd\").speed(-1).attack(.01).release(.4)",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "expression",
+    "code": "s(\"bd\").gain(sine.range(.2,.8))",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "unknown chain",
+    "code": "s(\"bd\").gain(.5).jux(rev).pan(.3)",
+    "valid": true,
+    "tracks": 1,
+    "opaqueCalls": 1
+  },
+  {
+    "name": "unknown callback",
+    "code": "s(\"bd\").every(4, p => p.fast(2))",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "template literal",
+    "code": "note(`c3\n[e3 g3]`).room(.2)",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "interpolated template",
+    "code": "lead: note(`c3 ${pitch}`).gain(.4)",
+    "valid": true,
+    "tracks": 1,
+    "rawTracks": 1
+  },
+  {
+    "name": "single quotes",
+    "code": "s('bd sd').bank('tr808')",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "parenthesized raw",
+    "code": "drums: (s(\"bd\").gain(.5))",
+    "valid": true,
+    "tracks": 1,
+    "rawTracks": 1
+  },
+  {
+    "name": "raw labeled",
+    "code": "ocean: stack(s(\"bd\"), note(\"c3\")).jux(rev)",
+    "valid": true,
+    "tracks": 1,
+    "rawTracks": 1
+  },
+  {
+    "name": "custom sample preamble",
+    "code": "await samples(\"github:user/kit\");\ns(\"bd\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "preamble postamble",
+    "code": "const x = 2;\ndrums: s(\"bd\");\nall(p => p.slow(x));",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "comments",
+    "code": "// start\ndrums: s(\"bd\"); // between\n/* end */",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "commented method",
+    "code": "s(\"bd\") /* keep */ .jux(rev).gain(.4)",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "commented numeric arg",
+    "code": "drums: s(\"bd\").gain(/* keep */ .4)",
+    "valid": true,
+    "tracks": 1,
+    "rawTracks": 1
+  },
+  {
+    "name": "duplicate labels",
+    "code": "drums: s(\"bd\"); drums: s(\"sd\")",
+    "valid": true,
+    "tracks": 2
+  },
+  {
+    "name": "anonymous",
+    "code": "setcpm(120/4); $: s(\"bd\"); $: s(\"hh\")",
+    "valid": true,
+    "tracks": 2
+  },
+  {
+    "name": "native mute solo",
+    "code": "_drums: s(\"bd\"); Shats: s(\"hh\")",
+    "valid": true,
+    "tracks": 2
+  },
+  {
+    "name": "trailing mute",
+    "code": "drums_: s(\"bd\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "raw assignment",
+    "code": "const song = stack(s(\"bd\"),s(\"hh\"));",
+    "valid": true,
+    "tracks": 0
+  },
+  {
+    "name": "unsupported mini euclid",
+    "code": "s(\"bd(3,8)\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "unsupported random mini",
+    "code": "s(\"bd? hh | sd\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "opaque precision",
+    "code": "setcps(.12345); s(\"bd\").gain(.12345)",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "tempo ordering",
+    "code": "const bpm = 120; setcpm(bpm/4); s(\"bd\"); setcps(.5);",
+    "valid": true,
+    "tracks": 0
+  },
+  {
+    "name": "invalid source",
+    "code": "s(",
+    "valid": false,
+    "tracks": 0
+  },
+  {
+    "name": "invalid JS label",
+    "code": "bad-name: s(\"bd\")",
+    "valid": false,
+    "tracks": 0
+  },
+  {
+    "name": "invalid delimiter",
+    "code": "s(\"bd\") ]",
+    "valid": false,
+    "tracks": 0
+  },
+  {
+    "name": "empty",
+    "code": "",
+    "valid": true,
+    "tracks": 0
+  },
+  {
+    "name": "raw block loop",
+    "code": "for (let i=0; i<3; i++) { console.log(i); }",
+    "valid": true,
+    "tracks": 0
+  },
+  {
+    "name": "raw labeled block",
+    "code": "custom: { console.log(\"preserve\"); }",
+    "valid": true,
+    "tracks": 0
+  },
+  {
+    "name": "computed call",
+    "code": "drums: s(\"bd\")[fx](.5)",
+    "valid": true,
+    "tracks": 1,
+    "rawTracks": 1
+  },
+  {
+    "name": "spread source",
+    "code": "drums: s(...sounds)",
+    "valid": true,
+    "tracks": 1,
+    "rawTracks": 1
+  },
+  {
+    "name": "optional chain",
+    "code": "drums: s(\"bd\")?.gain(.5)",
+    "valid": true,
+    "tracks": 1,
+    "rawTracks": 1
+  },
+  {
+    "name": "CRLF",
+    "code": "// keep\r\ndrums: s(\"bd\").jux( rev ).gain(.5);\r\n",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "unicode source",
+    "code": "lead: note(\"c♯3 d♭4\")",
+    "valid": true,
+    "tracks": 1
+  },
+  {
+    "name": "coastline-style preservation",
+    "code": "// coastline-style fixture; not the unavailable original handoff demo\nconst waves = sine.range(400, 2000);\nsetcpm(100/4);\n$: s(\"bd ~ [~ bd] ~\").bank(\"RolandTR808\").gain(.6);\n$: n(\"0 [2 4] <5 7> ~\").scale(\"C:minor\").s(\"sawtooth\").lpf(waves).jux(rev);\nsea: stack(note(\"c2\"), note(\"g2\")).slow(4).room(.6);",
+    "valid": true,
+    "tracks": 3
+  }
+]
