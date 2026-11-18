@@ -1,6 +1,6 @@
 # M0 spike findings
 
-Recorded 2026-11-17 (America/Toronto). Implementation scope: issues #1–#3 and owner decisions #23. The original handoff is not present locally or on the empty remote, so completeness against unnamed `(verify)` items in that handoff remains unconfirmed.
+Recorded 2026-11-17 (America/Toronto). Implementation scope: issues #1–#3 and owner decisions #23. The original handoff is not present locally or on the empty remote, so those original contents were not independently audited. The owner subsequently confirmed “M0 is verified,” accepting the milestone and resolving its outstanding acceptance checks.
 
 ## Acceptance status
 
@@ -10,9 +10,9 @@ Recorded 2026-11-17 (America/Toronto). Implementation scope: issues #1–#3 and 
 | Browser Play, Update, Stop | Exercised in Orca's Chromium browser on localhost. AudioContext running, sample loads successful, audio analyser reports nonzero output while playing. |
 | Failed edit retains last good playback | Browser syntax error shown without stopping the old loop; analyser peak 0.4048 after the error. Deterministic tests also check pattern object and active code identity. |
 | API verification | `npm test` runs the exact installed web bundle and boundary tests. |
-| Manual listening | **Pending human confirmation.** No claim about what was heard is made. Browser audio measurements do not establish speaker output or perceived musical correctness. |
-| Original handoff verification | Topics named in available issues covered below; absent original handoff cannot be exhaustively audited. |
-| M1 | Not started; do not close the M0 gate until the listening check and handoff limitation are resolved. |
+| Manual listening | **Owner confirmed M0 is verified.** This closes the human-verification acceptance item. No detailed listening description was supplied; the earlier analyser readings remain separate automated evidence. |
+| Original handoff verification | Owner accepted M0 completeness. The original handoff was unavailable for independent inspection; all verification topics named in the available issues are covered below. |
+| Milestone gate | **M0 accepted by the owner.** M1 is also implemented and verified; M2 has not started. |
 
 ## Versions and sources
 
@@ -111,7 +111,7 @@ MIDI is not a configured output in this bundle/spike; future hardware work requi
 5. Change to `s(` and Update. Confirm the syntax error, unchanged text, and continued cycle/output. The previous pattern's measured peak was **0.4048**.
 6. Stop. Scheduling stops and cycle returns to ready. After 500 ms for tails, measured output peak was **0** over about 1.2 seconds.
 7. Restore valid code and Play. Error clears and playback restarts. Stop when done.
-8. A human must listen and record whether the expected four sounds, live edit, and stop are heard. **Pending; requested during implementation.**
+8. Human verification was requested during implementation. The owner subsequently confirmed **“M0 is verified.”** The acceptance item is complete; no more detailed listening report was provided.
 
 Measurements used an AnalyserNode attached to the installed controller's destination gain and disconnected after each probe. They establish generated PCM activity, not audible listening evidence. Visual screenshot reviewed at desktop size; all controls, code, status, help, and source link are present. Browser errors during the invalid-code check are expected.
 
@@ -123,9 +123,9 @@ All lockfile packages declare a license. Runtime Strudel/Kabelsalat/Superdough p
 
 `npm audit` reports a high-severity picomatch ReDoS advisory (GHSA-fc5q-39xc-vjpf), propagated through nine tooling dependency entries. Installed picomatch 4.0.7 is also the latest registry version at verification; there is no patched upgrade to apply. `npm audit --omit=dev` reports zero runtime vulnerabilities. Recheck the tooling advisory before exposing development/build tooling to untrusted input. No forced downgrades were applied.
 
-Open acceptance items: human listening evidence; original handoff availability/completeness. Publish the matching source before any public deployment. M0 findings are delivered in this document; M1 remains unstarted.
+M0 has no remaining acceptance items following the owner’s confirmation, **“M0 is verified.”** The matching source is published on GitHub. M1 is implemented and verified; M2 has not started.
 
 
 ## Subsequent milestone authorization
 
-After these findings were reported and published, the user explicitly requested implementation of the next milestone. M1 therefore proceeded with that authorization. This does not convert the pending M0 listening check or original-handoff completeness check into passed checks. See [M1 model and verification](m1-model.md) for the subsequent work.
+After these findings were reported and published, the user explicitly requested implementation of the next milestone. M1 therefore proceeded with that authorization. At that time the M0 listening and original-handoff completeness checks were still pending. The owner subsequently confirmed “M0 is verified,” accepting those remaining checks. See [M1 model and verification](m1-model.md) for the subsequent work.
