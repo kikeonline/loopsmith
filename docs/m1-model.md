@@ -79,6 +79,6 @@ The existing CI workflow already runs all three checks and a clean install. Loca
 - the actual upstream **“coastline” by eddyflux** as a code-preservation fixture, with attribution and source URL in the fixtures README;
 - 500 deterministic fast-check project round trips (I1) and byte-stable regeneration checks (I2), spanning notes, drums, opaque patterns, raw tracks, metadata, flags, and ordered calls;
 - 100 randomized source-preservation and stable-ID edits (I3/I5), plus explicit error-retention/identity checks (I4);
-- 20 mini-notation timing comparisons and 13 program comparisons against the installed `@strudel/web@1.3.0` bundle, including duplicate keys, anonymous tracks, native flags, aliases, and discarded bare expressions.
+- 20 mini-notation timing comparisons and 15 program comparisons against the installed `@strudel/web@1.3.0` bundle, including duplicate keys, anonymous tracks, native flags, aliases, and discarded bare expressions.
 
 The suite proves the model contracts and byte preservation without an audio device or network. It does not claim a new manual listening check. The user explicitly requested this next milestone while M0's listening and original-handoff completeness checks remained open; that authorizes M1 work without claiming those M0 checks passed. M2 remains unstarted.
