@@ -11,4 +11,10 @@ declare module '@strudel/web' {
   export function initAudio(): Promise<void>;
   export function getAudioContext(): AudioContext;
   export function samples(url: string): Promise<unknown>;
+  export interface SoundEntry {
+    data?: { type?: string; samples?: unknown };
+    onTrigger(time: number, value: Record<string, string | number>, onEnded: () => void, cps: number): Promise<{ node: AudioNode; stop?: (time: number) => void } | undefined>;
+  }
+  export const soundMap: { get(): Record<string, SoundEntry> };
+  export function getSampleBuffer(value: Record<string, string | number>, bank: unknown): Promise<unknown>;
 }

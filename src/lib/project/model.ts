@@ -1,17 +1,17 @@
 import type { MiniPattern } from './mini';
 
 export const EFFECTS = {
-  gain: { label: 'Volume', min: 0, max: 2 },
-  pan: { label: 'Pan', min: 0, max: 1 },
-  lpf: { label: 'Low-pass filter', min: 20, max: 20000 },
-  hpf: { label: 'High-pass filter', min: 20, max: 20000 },
-  room: { label: 'Reverb', min: 0, max: 1 },
-  delay: { label: 'Delay', min: 0, max: 1 },
-  delaytime: { label: 'Delay time', min: 0, max: 1 },
-  delayfeedback: { label: 'Delay feedback', min: 0, max: 0.98 },
-  attack: { label: 'Attack', min: 0, max: 4 },
-  release: { label: 'Release', min: 0, max: 4 },
-  speed: { label: 'Sample speed', min: -4, max: 4 }
+  gain: { label: 'Volume', min: 0, max: 2, default: 1 },
+  pan: { label: 'Pan', min: 0, max: 1, default: 0.5 },
+  lpf: { label: 'Low-pass filter', min: 20, max: 20000, default: 20000 },
+  hpf: { label: 'High-pass filter', min: 20, max: 20000, default: 0 },
+  room: { label: 'Reverb', min: 0, max: 1, default: 0 },
+  delay: { label: 'Delay', min: 0, max: 1, default: 0 },
+  delaytime: { label: 'Delay time', min: 0, max: 1, default: 0.25 },
+  delayfeedback: { label: 'Delay feedback', min: 0, max: 0.98, default: 0 },
+  attack: { label: 'Attack', min: 0, max: 4, default: 0 },
+  release: { label: 'Release', min: 0, max: 4, default: 0 },
+  speed: { label: 'Sample speed', min: -4, max: 4, default: 1 }
 } as const;
 export type EffectName = keyof typeof EFFECTS;
 export const EFFECT_ALIASES: Record<string, EffectName> = { cutoff: 'lpf', ctf: 'lpf', lp: 'lpf', hcutoff: 'hpf', hp: 'hpf', att: 'attack', rel: 'release', delayfb: 'delayfeedback', dfb: 'delayfeedback', delayt: 'delaytime', dt: 'delaytime' };

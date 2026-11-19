@@ -1,0 +1,68 @@
+{
+  "format": "loopsmith-project",
+  "version": 1,
+  "name": "Modifier accessibility fixture",
+  "code": "const cycles = 4;\n// @loopsmith-track/v1 {\"id\":\"modifier-accessibility\",\"name\":\"Modifiers\"}\ndrums: s(\"bd sd\").fast(2).slow(1/3).rev().every(4, p => p.fast(2)).every(cycles, rev).jux(rev);\n",
+  "lastGoodCode": "const cycles = 4;\n// @loopsmith-track/v1 {\"id\":\"modifier-accessibility\",\"name\":\"Modifiers\"}\ndrums: s(\"bd sd\").fast(2).slow(1/3).rev().every(4, p => p.fast(2)).every(cycles, rev).jux(rev);\n",
+  "project": {
+    "version": 1,
+    "items": [
+      {
+        "kind": "raw",
+        "code": "const cycles = 4;"
+      },
+      {
+        "kind": "track",
+        "id": "modifier-accessibility",
+        "key": "drums",
+        "name": "Modifiers",
+        "muted": false,
+        "solo": false,
+        "source": {
+          "kind": "drums",
+          "pattern": {
+            "kind": "mini",
+            "rows": [
+              [
+                {
+                  "kind": "atom",
+                  "value": "bd"
+                },
+                {
+                  "kind": "atom",
+                  "value": "sd"
+                }
+              ]
+            ]
+          }
+        },
+        "calls": [
+          {
+            "kind": "opaque",
+            "code": ".fast(2)"
+          },
+          {
+            "kind": "opaque",
+            "code": ".slow(1/3)"
+          },
+          {
+            "kind": "opaque",
+            "code": ".rev()"
+          },
+          {
+            "kind": "opaque",
+            "code": ".every(4, p => p.fast(2))"
+          },
+          {
+            "kind": "opaque",
+            "code": ".every(cycles, rev)"
+          },
+          {
+            "kind": "opaque",
+            "code": ".jux(rev)"
+          }
+        ]
+      }
+    ]
+  }
+}

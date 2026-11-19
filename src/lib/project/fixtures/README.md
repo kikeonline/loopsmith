@@ -5,3 +5,7 @@
 - `coastline.strudel`: **“coastline” by eddyflux, version 1.0**, copied verbatim from the first demo on https://strudel.cc/workshop/getting-started/ on 2026-11-17. Original author/version comments are retained. Used only as an unexecuted preservation fixture; no samples or recordings are bundled. The example retains its upstream attribution and licensing; Loopsmith's application license does not relicense the musical work.
 
 The complete coastline source exercises custom samples, declarations, nested stacks, unsupported notation, callbacks, and modulation. Tests check that a separate targeted edit preserves every byte of the demo. Test fixtures are not imported into the browser application.
+
+`modifiers.loopsmith.json` is an independently authored Loopsmith v1 project fixture for the populated modifier accessibility audit. It exercises editable Fast/Reverse/Every controls and read-only rate, period, and callback expressions. It is validated by the modifier unit suite; it contains no copied third-party composition.
+
+`arrangement.loopsmith.json` is a version-1 project containing native arrangement source, stable section metadata, visual and expression cycle lengths, nested modifiers, a melody section, and a shared outer effect. It exercises restoration and the populated arrangement accessibility audit.

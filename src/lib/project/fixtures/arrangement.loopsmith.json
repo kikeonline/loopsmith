@@ -1,0 +1,25 @@
+{
+  "format": "loopsmith-project",
+  "version": 1,
+  "name": "Arrangement accessibility fixture",
+  "code": "// @loopsmith-track/v1 {\"id\":\"arrangement-accessibility\",\"name\":\"Arrangement\"}\ndrums: arrange(\n  // @loopsmith-section/v1 {\"id\":\"intro\",\"name\":\"Intro\"}\n  [2, s(\"bd ~ sd ~\").fast(2).slow(1/3).every(4, p => p.rev())],\n  // @loopsmith-section/v1 {\"id\":\"custom\",\"name\":\"Custom section\"}\n  [2 * 2, note(\"c3 ~ eb3 ~\").s(\"sine\")]\n).gain(0.5);\n",
+  "lastGoodCode": "// @loopsmith-track/v1 {\"id\":\"arrangement-accessibility\",\"name\":\"Arrangement\"}\ndrums: arrange(\n  // @loopsmith-section/v1 {\"id\":\"intro\",\"name\":\"Intro\"}\n  [2, s(\"bd ~ sd ~\").fast(2).slow(1/3).every(4, p => p.rev())],\n  // @loopsmith-section/v1 {\"id\":\"custom\",\"name\":\"Custom section\"}\n  [2 * 2, note(\"c3 ~ eb3 ~\").s(\"sine\")]\n).gain(0.5);\n",
+  "project": {
+    "version": 1,
+    "items": [
+      {
+        "kind": "track",
+        "id": "arrangement-accessibility",
+        "key": "drums",
+        "name": "Arrangement",
+        "muted": false,
+        "solo": false,
+        "source": {
+          "kind": "raw",
+          "code": "arrange(\n  // @loopsmith-section/v1 {\"id\":\"intro\",\"name\":\"Intro\"}\n  [2, s(\"bd ~ sd ~\").fast(2).slow(1/3).every(4, p => p.rev())],\n  // @loopsmith-section/v1 {\"id\":\"custom\",\"name\":\"Custom section\"}\n  [2 * 2, note(\"c3 ~ eb3 ~\").s(\"sine\")]\n).gain(0.5)"
+        },
+        "calls": []
+      }
+    ]
+  }
+}
