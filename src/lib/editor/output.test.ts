@@ -36,3 +36,17 @@ describe('scheduled output observations', () => {
     history.record(hap({note:60}),-1,0,0,() => 60); expect(listener).toHaveBeenCalledOnce();
   });
 });
+
+it('captures bounded source locations and snapshots them without leaking mutable ranges',()=>{
+  const code='s("bd sd")',history=new OutputHistory(()=>0);
+  history.record({value:{s:'bd'},ensureObjectValue(){},context:{locations:[{start:3,end:5},{start:-1,end:2},{start:0,end:999}]}},1,0,0,()=>60,code);
+  const first=history.snapshot().events[0];expect(first.source).toBe(code);expect(first.locations).toEqual([{from:3,to:5}]);
+  first.locations![0].from=99;expect(history.snapshot().events[0].locations).toEqual([{from:3,to:5}]);
+});
+
+it('drops old full-source references while preserving scheduled note history after a live update',()=>{
+  const history=new OutputHistory(()=>0),hap={value:{note:60},ensureObjectValue(){},context:{locations:[{start:3,end:5}]}};
+  history.record(hap,1,0,0,()=>60,'s("bd")');history.record(hap,1,0,0,()=>60,'s("sd")');
+  expect(history.snapshot().events[0]).toMatchObject({note:60,source:undefined,locations:[]});
+  expect(history.snapshot().events[1]).toMatchObject({source:'s("sd")',locations:[{from:3,to:5}]});
+});

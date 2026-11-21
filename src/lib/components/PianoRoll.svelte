@@ -2,7 +2,7 @@
   import type { Track } from '../project';
   import { melodicRows, midi, pitchName, setMelodicLength, setMelodicStep } from '../editor/composition';
   import type { VisualEdit } from '../editor/sync';
-  let { track, edit, cycle, highlight }: { track: Track; edit: (operation: VisualEdit) => void; cycle: number; highlight: boolean } = $props();
+  let { track, edit, cycle, highlight, eventSteps }: { eventSteps?: boolean[][]; track: Track; edit: (operation: VisualEdit) => void; cycle: number; highlight: boolean } = $props();
   let rowIndex = $state(0);
   let octave = $state(4);
   const rows = $derived(melodicRows(track));
@@ -30,13 +30,13 @@
   </div>
   <div class="piano-roll" role="group" aria-label={degrees ? 'Scale degree piano roll' : 'Piano roll'}>
     <div class="piano-grid" style={`--columns: ${row.length}`}>
-      <span class="piano-key">{degrees ? 'DEGREE' : 'PITCH'}</span>{#each row as _, step}<span class:playhead={activeStep === step} class="piano-time">{step + 1}</span>{/each}
+      <span class="piano-key">{degrees ? 'DEGREE' : 'PITCH'}</span>{#each row as _, step}<span class:playhead={eventSteps ? !!eventSteps[index]?.[step] : activeStep === step} class="piano-time">{step + 1}</span>{/each}
       {#each pitches as pitch}
         {@const label = degrees ? String(pitch) : pitchName(pitch)}
         <span class="piano-key" class:sharp={label.includes('#')}>{label}</span>
         {#each row as node, step}
           {@const on = node.kind === 'atom' && (degrees ? +node.value === pitch : midi(node.value) === pitch)}
-          <button class="piano-note" class:on class:playhead={activeStep === step} aria-label={`${degrees ? 'Degree' : 'Note'} ${label} step ${step + 1}`} aria-pressed={on} onkeydown={keyboard} onclick={() => { const id = track.id; edit(document => setMelodicStep(document, id, index, step, label)); }}><span aria-hidden="true">{on ? '●' : '·'}</span><span class="sr-only">{on ? 'On' : 'Off'}</span></button>
+          <button class="piano-note" class:on class:playhead={eventSteps ? on && !!eventSteps[index]?.[step] : activeStep === step} aria-label={`${degrees ? 'Degree' : 'Note'} ${label} step ${step + 1}`} aria-pressed={on} onkeydown={keyboard} onclick={() => { const id = track.id; edit(document => setMelodicStep(document, id, index, step, label)); }}><span aria-hidden="true">{on ? '●' : '·'}</span><span class="sr-only">{on ? 'On' : 'Off'}</span></button>
         {/each}
       {/each}
     </div>

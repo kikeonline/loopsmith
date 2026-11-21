@@ -10,6 +10,8 @@
   import ArrangementControls from '../lib/components/ArrangementControls.svelte';
   import { readArrangement, createArrangement, sectionProxy, outerProxy, editArrangementEffects } from '../lib/editor/arrangement';
   import { callIsCodeOnly } from '../lib/editor/modifiers';
+  import { activeSourceSpans } from '../lib/editor/event-playheads';
+  import type { Span } from '../lib/project';
   import OutputPanel from '../lib/components/OutputPanel.svelte';
   import ProjectBar from '../lib/components/ProjectBar.svelte';
   import { projectFile, readProjectFile, serializeProject, STORAGE_KEY, type RestoredProject } from '../lib/persistence/project-file';
@@ -30,6 +32,8 @@
   let dock = $state<'side' | 'bottom'>('side');
   let collapsed = $state(false);
   let cycle = $state(0);
+  let playheadMode = $state<'clock' | 'events'>('clock');
+  let eventRanges = $state<Span[]>([]);
   let editorHost: HTMLDivElement;
   let editor: EditorSync;
   let playback = $state<Playback>(null!);
@@ -46,7 +50,7 @@
   }
   const codeOnly = $derived(sync.document.project.items.some(item => item.kind === 'raw' || (item.kind === 'tempo' && item.value.kind === 'expression') || (item.kind === 'track' && trackCodeOnly(sync.document, item))));
 
-  const highlighting = $derived(!!selected && audio.playing && audio.activeCode === sync.document.code && !sync.error && canHighlight(selected) && (selected.key.includes('$') || tracks.filter(track => track.key === selected.key).length === 1) && (!tracks.some(track => track.solo && !track.muted) || selected.solo));
+  const highlighting = $derived(!!selected && audio.playing && audio.activeCode === sync.document.code && !sync.error && playheadMode === 'clock' && canHighlight(selected) && (selected.key.includes('$') || tracks.filter(track => track.key === selected.key).length === 1) && (!tracks.some(track => track.solo && !track.muted) || selected.solo));
   function add() { const id = crypto.randomUUID(); selectedId = id; const kind = newTrackKind; edit(document => addTrack(document, kind, id)); }
   function duplicate(id: string) { const nextId = crypto.randomUUID(); selectedId = nextId; edit(document => duplicateTrack(document, id, nextId)); }
 
@@ -69,7 +73,15 @@
       if (validCode !== undefined) playback.update(validCode);
     }, { initialDocument: restored?.document, draftChanged: saveDraft, projectLoaded: () => playback.stop() });
     if (import.meta.env.MODE === 'e2e') void import('../lib/editor/fake-runtime').then(module => module.connectEditor(editor.view));
-    function tick() { cycle = audio.playing ? playback.cycle() : 0; frame = requestAnimationFrame(tick); }
+    function tick() {
+      cycle = audio.playing ? playback.cycle() : 0;
+      const code = editor.code;
+      const snapshot = playheadMode === 'events' && audio.playing && !audio.loading && !sync.error && code === audio.activeCode ? playback.events() : undefined;
+      const next = snapshot ? activeSourceSpans(snapshot.events,snapshot.now,code) : [];
+      if (JSON.stringify(next) !== JSON.stringify(eventRanges)) eventRanges = next;
+      editor.setPlayhead(next,code);
+      frame = requestAnimationFrame(tick);
+    }
     tick();
     return () => { cancelAnimationFrame(frame); editor.destroy(); playback.destroy(); };
   });
@@ -129,6 +141,7 @@
         <button class="stop" onclick={() => playback?.stop()} disabled={!audio.playing && !audio.loading}>■ Stop</button>
       </div>
       <label class="tempo" title={tempoReadOnly ? 'Tempo includes code-only parts; edit in the code pane' : 'Four beats per cycle'}>Tempo <input aria-label="Tempo BPM" type="number" min="1" step="1" value={tempoReadOnly ? '' : bpm ?? ''} placeholder={tempoReadOnly ? 'Code' : '120'} disabled={tempoReadOnly} onchange={event => { const value = Number(event.currentTarget.value); edit(document => setBpm(document, value)); }} /> BPM</label>
+      <label class="playhead-mode">Playhead <select aria-label="Playhead mode" bind:value={playheadMode}><option value="clock">Cycle clock</option><option value="events">Scheduled events</option></select></label>
       <div class="readout" role="status"><span class:lit={audio.playing} class="indicator"></span>{audio.loading ? 'Preparing audio / samples' : audio.playing ? `Playing · cycle ${Math.max(0, cycle).toFixed(1)}` : 'Ready when you are'}</div>
     </div>
     <div class="sync-bar" aria-live="polite"><span class:error-text={!!sync.error}>{sync.error ? 'Syntax error / using last good version' : 'In sync'}{codeOnly ? ' · Contains code-only parts' : ''}</span><span>{sync.queued ? `${sync.queued} visual edit(s) waiting for valid code and typing to pause` : 'Visual edits ↔ Strudel code'}</span></div>
@@ -155,9 +168,9 @@
             {#if selected.source.kind !== 'raw'}<button class="flag" onclick={() => { const sectionId = crypto.randomUUID(); edit(document => createArrangement(document, id, sectionId)); }}>Arrange this track</button>{/if}
           </div>
           {#if arrangement}
-            <ArrangementControls document={sync.document} track={selected} {edit} {cycle} audible={audio.playing && audio.activeCode === sync.document.code && !sync.error && (selected.key.includes('$') || tracks.filter(track => track.key === selected.key).length === 1) && !selected.muted && (!tracks.some(track => track.solo && !track.muted) || selected.solo)} loadSounds={() => playback.sounds()} previewSound={name => playback.preview(name)} stopPreview={() => playback.stopPreview()} />
+            <ArrangementControls document={sync.document} track={selected} {edit} {cycle} eventRanges={playheadMode === 'events' ? eventRanges : undefined} audible={audio.playing && audio.activeCode === sync.document.code && !sync.error && (selected.key.includes('$') || tracks.filter(track => track.key === selected.key).length === 1) && !selected.muted && (!tracks.some(track => track.solo && !track.muted) || selected.solo)} loadSounds={() => playback.sounds()} previewSound={name => playback.preview(name)} stopPreview={() => playback.stopPreview()} />
           {:else}
-            <PatternEditor document={sync.document} track={selected} {edit} {cycle} highlight={highlighting} loadSounds={() => playback.sounds()} previewSound={name => playback.preview(name)} stopPreview={() => playback.stopPreview()} />
+            <PatternEditor document={sync.document} track={selected} {edit} {cycle} eventRanges={playheadMode === 'events' ? eventRanges : undefined} highlight={highlighting} loadSounds={() => playback.sounds()} previewSound={name => playback.preview(name)} stopPreview={() => playback.stopPreview()} />
           {/if}
         {:else}<h2>Your next loop starts here</h2><p class="hint">Add a drum or melody track on the left, or choose a starter template above. Watch each visual edit become Strudel code.</p>{/if}
       </section>

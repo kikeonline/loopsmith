@@ -37,3 +37,5 @@ The installed `@strudel/web@1.3.0` bundle exports `webaudioOutput`, `getTrigger`
 Physical MIDI-device behavior and human listening acceptance remain unreported. No physical-device permission prompt was accepted or hardware message sent during these checks. The prior v1 listening and remote CI acceptance checks remain unreported. Share-link import is the remaining stretch item; no release gate or deployment is claimed.
 
 The subsequent phase implements [local Strudel share-link import](post-v1-share-import.md), the remaining listed stretch item.
+
+The later [scheduled-event playhead phase](post-v1-event-playheads.md) adds source-version/location observations for code tokens, flat pattern slots and arrangement sections, without changing the MIDI routing contract.

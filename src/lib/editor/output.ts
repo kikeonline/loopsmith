@@ -1,7 +1,8 @@
+import type { Span } from '../project';
 /** Runtime timestamps use performance.now() milliseconds, not pattern cycles. */
-export interface OutputEvent { id: number; start: number; end: number; note: number | null; sound: string }
+export interface OutputEvent { id: number; start: number; end: number; note: number | null; sound: string; source?: string; locations?: Span[] }
 export interface OutputSnapshot { now: number; events: OutputEvent[]; waveform: number[] }
-export interface ScheduledHap { value: unknown; whole?: { begin: { valueOf(): number } }; ensureObjectValue(): void }
+export interface ScheduledHap { value: unknown; whole?: { begin: { valueOf(): number } }; ensureObjectValue(): void; context?: { locations?: {start:number;end:number}[] } }
 export function pitchedNote(value: unknown, convert: (value: Record<string, unknown>) => number): number | null {
   if (!value || typeof value !== 'object' || !('note' in value || 'freq' in value)) return null;
   try {
@@ -15,21 +16,28 @@ export function pitchedNote(value: unknown, convert: (value: Record<string, unkn
 export class OutputHistory {
   private events: OutputEvent[] = [];
   private sequence = 0;
+  private source?: string;
   private listeners = new Set<(event: OutputEvent) => void>();
   constructor(private now = () => performance.now()) {}
   subscribe(listener: (event: OutputEvent) => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
-  record(hap: ScheduledHap, duration: number, targetTime: number, audioTime: number, convert: (value: Record<string, unknown>) => number) {
+  record(hap: ScheduledHap, duration: number, targetTime: number, audioTime: number, convert: (value: Record<string, unknown>) => number, source?: string) {
     if (![duration,targetTime,audioTime].every(Number.isFinite) || duration <= 0) return;
+    if (source !== this.source) {
+      // Retain note history without retaining every old full-source version.
+      this.events = this.events.map(event => ({...event,source:undefined,locations:[]}));
+      this.source = source;
+    }
     const now = this.now(), start = now + (targetTime - audioTime) * 1000;
     const value = hap.value;
     const sound = value && typeof value === 'object' && 's' in value ? String(value.s).slice(0,80) : '';
-    const event = { id: ++this.sequence, start, end: start + Math.min(duration,60) * 1000, note: pitchedNote(value,convert), sound };
+    const locations = Array.isArray(hap.context?.locations) ? hap.context.locations.slice(0,64).filter(range => range && Number.isInteger(range.start) && Number.isInteger(range.end) && range.start >= 0 && range.start < range.end && range.end <= (source?.length ?? 0)).map(range => ({from:range.start,to:range.end})) : [];
+    const event: OutputEvent = { source, locations, id: ++this.sequence, start, end: start + Math.min(duration,60) * 1000, note: pitchedNote(value,convert), sound };
     this.events = [...this.events.filter(event => event.end >= now - 4000), event].slice(-256);
     for (const listener of this.listeners) { try { listener(event); } catch { /* Observers cannot interrupt audio output. */ } }
   }
   snapshot(): OutputSnapshot {
     const now = this.now(); this.events = this.events.filter(event => event.end >= now - 4000);
-    return { now, events: this.events.map(event => ({...event})), waveform: [] };
+    return { now, events: this.events.map(event => ({...event,locations:event.locations?.map(range => ({...range}))})), waveform: [] };
   }
-  clear() { this.events = []; }
+  clear() { this.events = []; this.source = undefined; }
 }

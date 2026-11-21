@@ -1,10 +1,10 @@
-import { ChangeSet, EditorState, StateEffect, Transaction } from '@codemirror/state';
+import { ChangeSet, EditorState, StateEffect, StateField, Transaction } from '@codemirror/state';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
-import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view';
+import { EditorView, Decoration, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, invertedEffects, isolateHistory, undo, redo } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
-import { ProjectSession, type ParsedDocument } from '../project';
+import { ProjectSession, type ParsedDocument, type Span } from '../project';
 import { carryModifierReferences } from './modifiers';
 import { carryArrangementReferences } from './arrangement';
 
@@ -22,6 +22,15 @@ interface SyncOptions {
   projectLoaded?: () => void;
 }
 const projectAnchor = StateEffect.define<{ before: ParsedDocument; after: ParsedDocument }>();
+const eventRanges = StateEffect.define<readonly Span[]>();
+const playheadRanges = StateField.define<readonly Span[]>({
+  create: () => [],
+  update(ranges,transaction) {
+    if (transaction.docChanged) return [];
+    return transaction.effects.find(effect => effect.is(eventRanges))?.value ?? ranges;
+  },
+  provide: field => EditorView.decorations.from(field,ranges => Decoration.set(ranges.map(range => Decoration.mark({class:'cm-event-playhead'}).range(range.from,range.to)),true))
+});
 const colors = HighlightStyle.define([
   { tag: tags.keyword, color: '#dfb888' },
   { tag: tags.string, color: '#c3ed87' },
@@ -34,6 +43,13 @@ const colors = HighlightStyle.define([
 /** One editor, one history, and semantic queued operations rather than stale offsets. */
 export class EditorSync {
   readonly view: EditorView;
+  private draftCode: string;
+  get code() { return this.draftCode; }
+  setPlayhead(ranges: readonly Span[], source: string) {
+    const next = source === this.draftCode ? ranges.filter(range => Number.isInteger(range.from) && Number.isInteger(range.to) && range.from >= 0 && range.to <= source.length && range.from < range.to) : [];
+    const previous = this.view.state.field(playheadRanges);
+    if (JSON.stringify(previous) !== JSON.stringify(next)) this.view.dispatch({effects:eventRanges.of(next),annotations:Transaction.addToHistory.of(false)});
+  }
   private session: ProjectSession;
   private timer?: ReturnType<typeof setTimeout>;
   private queueTimer?: ReturnType<typeof setTimeout>;
@@ -43,11 +59,12 @@ export class EditorSync {
   private destroyed = false;
 
   constructor(parent: HTMLElement, code: string, private changed: (state: SyncState, validCode?: string) => void, private options: SyncOptions = {}) {
+    this.draftCode = code;
     this.session = new ProjectSession(options.initialDocument?.code ?? code);
     if (options.initialDocument) this.session.document = options.initialDocument;
     this.state = { document: this.session.document, error: '', editError: '', queued: 0, lastEditSource: 'code' };
     this.view = new EditorView({ parent, state: EditorState.create({ doc: code, extensions: [
-      history(), lineNumbers(), highlightActiveLine(), javascript(), syntaxHighlighting(colors),
+      history(), playheadRanges, lineNumbers(), highlightActiveLine(), javascript(), syntaxHighlighting(colors),
       // Split only LF: CR characters remain source bytes, including in mixed-ending imports.
       EditorState.lineSeparator.of('\n'),
       invertedEffects.of(transaction => transaction.effects.filter(effect => effect.is(projectAnchor)).map(effect => projectAnchor.of({ before: effect.value.after, after: effect.value.before }))),
@@ -55,6 +72,7 @@ export class EditorSync {
       EditorView.contentAttributes.of({ 'aria-label': 'Strudel code', spellcheck: 'false' }),
       EditorView.theme({ '&': { height: '100%', background: '#111710', color: '#d2efa9' }, '.cm-scroller': { overflow: 'auto', fontFamily: 'ui-monospace, monospace', fontSize: '14px' }, '.cm-content': { minHeight: '280px' }, '.cm-gutters': { background: '#171e14', color: '#849575', border: 'none' }, '.cm-activeLine': { background: '#c3ed8708' }, '&.cm-focused': { outline: 'none' }, '.cm-cursor': { borderLeftColor: '#c3ed87' }, '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': { background: '#435535' } }),
       EditorView.updateListener.of(update => {
+        if (update.docChanged) this.draftCode = update.state.doc.toString();
         const anchor = update.transactions.flatMap(transaction => transaction.effects).find(effect => effect.is(projectAnchor));
         if (!update.docChanged && !anchor) return;
         if (anchor) { this.options.projectLoaded?.(); this.session.document = anchor.value.after; }

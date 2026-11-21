@@ -147,3 +147,16 @@ for (const code of ['s("bd")','// café 🌊\r\ndrums: arrange([2,s("bd ~")],[1,
 }
 assert.equal(api.code2hash('s("bd")'),'cygiYmQiKQ%3D%3D');
 console.log('PASS: native Strudel share-link encoding and UTF-8/mixed-newline decoding');
+
+// Default-output source locations retain original bytes through timing transforms.
+for (const code of ['// 🌊\r\ndrums:s("bd sd").rev().fast(2)','drums:arrange([1,s("bd sd")],[2,s("cp hh")]).every(2,p=>p.rev())']) {
+  const pattern = await evaluate(code);
+  assert.equal(repl.state.activeCode,code);
+  const haps = pattern.queryArc(0,3).filter(hap => hap.hasOnset());
+  assert.ok(haps.length>0);
+  for (const hap of haps) assert.ok(hap.context.locations.some(location => code.slice(location.start,location.end)===hap.value.s));
+}
+const escapedCode = 's("b\\u0064 sd")';
+const escapedHap = (await evaluate(escapedCode)).queryArc(0,1).find(hap => hap.value.s==='bd');
+assert.ok(escapedHap.context.locations.some(location => escapedCode.slice(location.start,location.end)!=='bd'));
+console.log('PASS: source-version and event-location contracts for Unicode/CRLF, modifiers/arrangements, and escaped-string exclusion');

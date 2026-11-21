@@ -20,6 +20,7 @@ export class Playback {
   onEvent(callback: (event: OutputEvent) => void) { this.eventListeners.add(callback); return () => { this.eventListeners.delete(callback); }; }
   onStop(callback: () => void) { this.stopListeners.add(callback); return () => { this.stopListeners.delete(callback); }; }
   monitor(): OutputSnapshot { return this.runtime?.monitor?.() ?? {now:performance.now(),events:[],waveform:[]}; }
+  events(): OutputSnapshot { return this.runtime?.events?.() ?? {now:performance.now(),events:[],waveform:[]}; }
   releaseMonitor() { this.runtime?.releaseMonitor?.(); }
   constructor(private changed: (state: PlaybackState) => void, private factory: () => Promise<LiveRuntime> = createRuntime) {}
   private notify() { this.changed({ ...this.state }); }

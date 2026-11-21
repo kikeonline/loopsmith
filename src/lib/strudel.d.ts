@@ -1,7 +1,7 @@
 // The pinned @strudel/web package ships no TypeScript declarations.
 // Keep this boundary restricted to the exports exercised by this spike.
 declare module '@strudel/web' {
-  export interface ScheduledHap { value: unknown; whole?: { begin: { valueOf(): number } }; ensureObjectValue(): void }
+  export interface ScheduledHap { value: unknown; whole?: { begin: { valueOf(): number } }; ensureObjectValue(): void; context?: {locations?: {start:number;end:number}[]} }
   export type Output = (hap: ScheduledHap, deadline: number, duration: number, cps: number, time: number) => unknown;
   export const webaudioOutput: Output;
   export function valueToMidi(value: Record<string, unknown>): number;
@@ -9,7 +9,7 @@ declare module '@strudel/web' {
   export interface Repl {
     evaluate(code: string, autostart?: boolean): Promise<unknown>;
     stop(): void;
-    state: { evalError?: Error; started: boolean };
+    state: { evalError?: Error; started: boolean; activeCode?: string };
     scheduler: { now(): number; cps: number };
   }
   export function initStrudel(options?: { prebake?: () => Promise<unknown>; defaultOutput?: Output; onEvalError?: (error: Error) => void }): Promise<Repl>;

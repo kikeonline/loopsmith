@@ -6,7 +6,7 @@ export const probe = {
   plays: [] as string[], stops: 0, activeCode: '', started: false, delay: 0,
   editor: undefined as EditorView | undefined,
   previews: [] as string[], previewDelay: 0, initializations: 0, monitorReleases: 0,
-  emitOutput: undefined as ((note: number | null, duration?: number) => void) | undefined
+  emitOutput: undefined as ((note: number | null, duration?: number, locations?: {from:number;to:number}[], source?: string) => void) | undefined
 };
 declare global { interface Window { __loopsmithTest: typeof probe } }
 export function connectEditor(editor: EditorView) { probe.editor = editor; window.__loopsmithTest = probe; }
@@ -15,7 +15,7 @@ export async function createFakeRuntime(): Promise<LiveRuntime> {
   let events: OutputEvent[] = [];
   let sequence = 0;
   const eventListeners = new Set<(event: OutputEvent) => void>();
-  probe.emitOutput = (note, duration = 500) => { if (!probe.started) return; const start = performance.now()+30; const event = {id:++sequence,note,start,end:start+duration,sound:note === null ? 'bd' : 'sine'}; events.push(event); eventListeners.forEach(listener => listener(event)); };
+  probe.emitOutput = (note, duration = 500, locations = [], source = probe.activeCode) => { if (!probe.started) return; const start = performance.now()+30; const event = {source,locations,id:++sequence,note,start,end:start+duration,sound:note === null ? 'bd' : 'sine'}; events.push(event); eventListeners.forEach(listener => listener(event)); };
   const listeners = new Set<(error: Error) => void>();
   let startedAt = 0;
   let previewRevision = 0;
@@ -30,6 +30,7 @@ export async function createFakeRuntime(): Promise<LiveRuntime> {
     probe.activeCode = code; probe.started = true;
   };
   return { onEvent(callback) { eventListeners.add(callback); return () => { eventListeners.delete(callback); }; },
+    events() { return {now:performance.now(),events:[...events],waveform:[]}; },
     monitor() { const now = performance.now(); events = events.filter(event => event.end >= now-4000).slice(-256); return {now,events:[...events],waveform:Array.from({length:64},(_,index) => Math.sin(index/3)*0.2)}; },
     releaseMonitor() { probe.monitorReleases++; },
     destroy() { eventListeners.clear(); probe.emitOutput = undefined; },

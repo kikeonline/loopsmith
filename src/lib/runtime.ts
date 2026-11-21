@@ -10,6 +10,7 @@ export interface LiveRuntime extends Runtime {
   play(code: string): Promise<void>;
   onEvent?(callback: (event: OutputEvent) => void): () => void;
   monitor?(): OutputSnapshot;
+  events?(): OutputSnapshot;
   releaseMonitor?(): void;
   destroy?(): void;
   onError(callback: (error: Error) => void): () => void;
@@ -26,16 +27,18 @@ export async function createRuntime(): Promise<LiveRuntime> {
   // Explicitly initialize and resume here, including keyboard-generated clicks.
   const history = new OutputHistory();
   const context = api.getAudioContext();
+  let repl: Repl | undefined;
   const ready = api.initStrudel({
     defaultOutput(hap, deadline, duration, cps, time) {
       hap.ensureObjectValue();
-      try { history.record(hap, duration, time, context.currentTime, api.valueToMidi); } catch { /* Observation must not block audio. */ }
+      try { history.record(hap, duration, time, context.currentTime, api.valueToMidi, repl?.state.activeCode); } catch { /* Observation must not block audio. */ }
       return api.webaudioOutput(hap, deadline, duration, cps, time);
     },
     prebake: () => api.samples('github:tidalcycles/dirt-samples')
   });
-  const [repl] = await Promise.all([ready, api.getAudioContext().resume(), api.initAudio()]);
-  const runtime = wrapRepl(repl);
+  const [initialized] = await Promise.all([ready, api.getAudioContext().resume(), api.initAudio()]);
+  repl = initialized;
+  const runtime = wrapRepl(initialized);
   let analyser: AnalyserNode | undefined;
   let tapped: AudioNode | undefined;
   let samples: Float32Array<ArrayBuffer> | undefined;
@@ -61,6 +64,7 @@ export async function createRuntime(): Promise<LiveRuntime> {
     ...runtime,
     onEvent: callback => history.subscribe(callback),
     monitor, releaseMonitor,
+    events: () => history.snapshot(),
     destroy() { stopPreview(); runtime.stop(); releaseMonitor(); history.clear(); },
     sounds: () => Object.entries(api.soundMap.get()).map(([name, entry]) => ({ name, type: entry.data?.type ?? 'synth', samples: Array.isArray(entry.data?.samples) ? entry.data.samples.length : 0 })).sort((a, b) => a.name.localeCompare(b.name)),
     stopPreview,
