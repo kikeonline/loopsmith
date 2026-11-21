@@ -116,3 +116,34 @@ const restArrangement = await evaluate('arrange([1,s("bd")],[2,s("~")]).gain(0.2
 assert.deepEqual(Array.from({length:6},(_,cycle) => onsets(restArrangement,cycle)), [['bd'],[],[],['bd'],[],[]]);
 assert.equal(restArrangement.queryArc(0,1)[0].value.gain,0.25);
 console.log('PASS: arrangement section boundaries, advancing alternation phase, inner modifiers, rests, and shared effects');
+
+// Observe the actual scheduler default-output boundary; custom dominant callbacks bypass it.
+for (const name of ['valueToMidi','webaudioOutput','getSuperdoughAudioController','getTrigger']) assert.equal(typeof api[name],'function',name);
+assert.equal(api.valueToMidi({note:'c3'}),48);
+assert.equal(api.valueToMidi({note:0}),0);
+assert.equal(api.valueToMidi({freq:440}),69);
+assert.throws(() => api.valueToMidi({s:'bd',n:2}));
+const outputProgram = await evaluate('arrange([1,n("0 2").scale("C:minor").s("sine")],[1,note("<c4 eb4>").s("triangle")]).fast(2)');
+const scheduled = [];
+const trigger = api.getTrigger({getTime:() => 10,defaultOutput:(hap,deadline,duration,cps,time) => { hap.ensureObjectValue(); scheduled.push({note:api.valueToMidi(hap.value),deadline,duration,cps,time}); }});
+const outputHaps = outputProgram.queryArc(0,2).filter(hap => hap.hasOnset()).sort((a,b) => Number(a.whole.begin)-Number(b.whole.begin));
+for (const hap of outputHaps) await trigger(hap,0.1,Number(hap.duration)/0.5,0.5,10+Number(hap.whole.begin)/0.5);
+assert.deepEqual(scheduled.map(event => event.note),[48,51,60,48,51,63]);
+assert.ok(scheduled.every(event => event.deadline===0.1 && event.duration>0 && Number.isFinite(event.time)));
+const observedCount = scheduled.length;
+let customCalls = 0;
+const customHap = (await evaluate('note("c3").s("sine")')).queryArc(0,1)[0];
+customHap.context.onTrigger = () => customCalls++;
+customHap.context.dominantTrigger = true;
+await trigger(customHap,0.1,2,0.5,12);
+assert.equal(customCalls,1); assert.equal(scheduled.length,observedCount);
+console.log('PASS: resolved MIDI pitches, scaled/arranged/modified output events, scheduler timestamps, and custom-output bypass');
+
+// Native share links are percent-encoded UTF-8 Base64 fragments, without compression.
+for (const code of ['s("bd")','// café 🌊\r\ndrums: arrange([2,s("bd ~")],[1,note("c3").s("sine")]);\r\n']) {
+  const expected = encodeURIComponent(Buffer.from(code,'utf8').toString('base64'));
+  assert.equal(api.code2hash(code),expected);
+  assert.equal(api.hash2code(expected),code);
+}
+assert.equal(api.code2hash('s("bd")'),'cygiYmQiKQ%3D%3D');
+console.log('PASS: native Strudel share-link encoding and UTF-8/mixed-newline decoding');

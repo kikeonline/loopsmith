@@ -1,6 +1,7 @@
 <script lang="ts">
   import { parseDocument, type ParsedDocument } from '../project';
   import { downloadText, MAX_FILE_BYTES, projectFile, readProjectFile, safeFilename, serializeProject, type RestoredProject } from '../persistence/project-file';
+  import { readShareUrl, MAX_SHARE_URL_LENGTH } from '../persistence/share-url';
   import { TEMPLATES } from '../persistence/templates';
   let { name, rename, snapshot, load, saveStatus, saveError, recovery, paused, resume }: {
     name: string; rename: (name: string) => void;
@@ -8,6 +9,8 @@
     load: (project: RestoredProject) => void;
     saveStatus: string; saveError: string; recovery: string; paused: boolean; resume: () => void;
   } = $props();
+  let shareUrl = $state('');
+  let sharePreview = $state.raw<RestoredProject>();
   let templateId = $state('basic-beat');
   let error = $state('');
   let message = $state('');
@@ -17,7 +20,7 @@
   const template = $derived(TEMPLATES.find(item => item.id === templateId)!);
   function act(operation: () => void) { error = ''; message = ''; try { operation(); } catch (cause) { error = cause instanceof Error ? cause.message : String(cause); } }
   function loadSource(code: string, title: string) {
-    request++; importing = false;
+    request++; importing = false; sharePreview = undefined;
     const parsed = parseDocument(code);
     if (!parsed.ok) throw new Error(`Template syntax error: ${parsed.error.message}`);
     load({ file: projectFile(title, code, parsed.document), document: parsed.document });
@@ -34,10 +37,24 @@
       const text = await file.text();
       const restored = readProjectFile(text);
       if (current !== request) return;
+      sharePreview = undefined;
       load(restored);
       message = `Imported ${restored.file.name || 'Untitled loop'}. Press Play to run its code.`;
     } catch (cause) { if (current === request) error = cause instanceof Error ? cause.message : String(cause); }
     finally { if (current === request) importing = false; input.value = ''; }
+  }
+  function reviewShare() {
+    sharePreview = undefined;
+    sharePreview = readShareUrl(shareUrl);
+    message = 'Link decoded locally. Review its code below, then choose Import reviewed code.';
+  }
+  function importShare() {
+    if (!sharePreview) throw new Error('Review the current share link first.');
+    const restored = sharePreview;
+    request++; importing = false;
+    load(restored);
+    sharePreview = undefined; shareUrl = '';
+    message = 'Imported Strudel share code. Undo restores your previous source. Press Play when you’re ready.';
   }
   function exportJson() {
     const { code, document } = snapshot();
@@ -67,6 +84,14 @@
     <button class="flag" onclick={() => act(exportCode)}>Download code</button>
   </div>
   <div class="template-tools"><label>Starter template <select aria-label="Starter template" bind:value={templateId}>{#each TEMPLATES as item}<option value={item.id}>{item.name}</option>{/each}</select></label><button class="flag" onclick={() => act(() => loadSource(template.code, template.name))}>Load template</button><p class="hint">{template.description}</p></div>
+  <details class="share-import"><summary>Import Strudel share URL</summary>
+    <p class="hint">Paste a strudel.cc link containing code after #. Decoding stays on this device. Review the code before importing; it runs only when you press Play.</p>
+    <label>Strudel share URL <textarea class="share-url" aria-label="Strudel share URL" rows="3" maxlength={MAX_SHARE_URL_LENGTH} spellcheck="false" value={shareUrl} oninput={event => { shareUrl = event.currentTarget.value; sharePreview = undefined; }} placeholder="https://strudel.cc/#…"></textarea></label>
+    <button class="flag" disabled={!shareUrl.trim()} onclick={() => act(reviewShare)}>Review share link</button>
+    {#if sharePreview}
+      <section class="share-review" aria-label="Share code review"><h3>Review decoded code</h3><p class="hint">{sharePreview.file.code.length.toLocaleString()} characters · Tracks: {sharePreview.document.project.items.filter(item => item.kind === 'track').length}. Import replaces the current source and stops playback. Undo restores the previous source.</p><textarea class="share-preview" aria-label="Decoded Strudel code" readonly rows="10" value={sharePreview.file.code}></textarea><button class="flag" onclick={() => act(importShare)}>Import reviewed code</button></section>
+    {/if}
+  </details>
   <p class="hint">Saved on this browser only. Export JSON to keep a portable backup. Imports and templates stay stopped until you press Play; load only code you trust.</p>
   {#if message}<p class="project-message" aria-live="polite">{message}</p>{/if}
   {#if error}<p class="error" role="alert">{error} Your editor has not been cleared.</p>{/if}

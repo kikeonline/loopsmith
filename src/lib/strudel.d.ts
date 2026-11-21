@@ -1,13 +1,18 @@
 // The pinned @strudel/web package ships no TypeScript declarations.
 // Keep this boundary restricted to the exports exercised by this spike.
 declare module '@strudel/web' {
+  export interface ScheduledHap { value: unknown; whole?: { begin: { valueOf(): number } }; ensureObjectValue(): void }
+  export type Output = (hap: ScheduledHap, deadline: number, duration: number, cps: number, time: number) => unknown;
+  export const webaudioOutput: Output;
+  export function valueToMidi(value: Record<string, unknown>): number;
+  export function getSuperdoughAudioController(): { output: { destinationGain: AudioNode | null } };
   export interface Repl {
     evaluate(code: string, autostart?: boolean): Promise<unknown>;
     stop(): void;
     state: { evalError?: Error; started: boolean };
     scheduler: { now(): number; cps: number };
   }
-  export function initStrudel(options?: { prebake?: () => Promise<unknown>; onEvalError?: (error: Error) => void }): Promise<Repl>;
+  export function initStrudel(options?: { prebake?: () => Promise<unknown>; defaultOutput?: Output; onEvalError?: (error: Error) => void }): Promise<Repl>;
   export function initAudio(): Promise<void>;
   export function getAudioContext(): AudioContext;
   export function samples(url: string): Promise<unknown>;

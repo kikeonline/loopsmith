@@ -10,6 +10,7 @@
   import ArrangementControls from '../lib/components/ArrangementControls.svelte';
   import { readArrangement, createArrangement, sectionProxy, outerProxy, editArrangementEffects } from '../lib/editor/arrangement';
   import { callIsCodeOnly } from '../lib/editor/modifiers';
+  import OutputPanel from '../lib/components/OutputPanel.svelte';
   import ProjectBar from '../lib/components/ProjectBar.svelte';
   import { projectFile, readProjectFile, serializeProject, STORAGE_KEY, type RestoredProject } from '../lib/persistence/project-file';
   import type { ParsedDocument } from '../lib/project';
@@ -31,7 +32,7 @@
   let cycle = $state(0);
   let editorHost: HTMLDivElement;
   let editor: EditorSync;
-  let playback: Playback;
+  let playback = $state<Playback>(null!);
   const tracks = $derived(sync.document.project.items.filter((item): item is Track => item.kind === 'track'));
   const selected = $derived(tracks.find(track => track.id === selectedId) ?? tracks[0]);
   const arrangement = $derived(selected ? readArrangement(sync.document, selected.id) : undefined);
@@ -176,6 +177,7 @@
         </div>
       {/each}</div>
     </section>
+    {#if playback}<OutputPanel {playback} playing={audio.playing} stale={audio.playing && (!!sync.error || audio.activeCode !== sync.document.code)} />{/if}
     <div class="editor-bottom"><span>Live changes apply on the next scheduling tick, with a short audio lookahead.</span><span>Space to play/stop outside controls · Cmd/Ctrl + Enter to play/update</span></div>
   </section>
   <section class="guide" aria-label="Getting started">

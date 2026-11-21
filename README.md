@@ -50,9 +50,10 @@ SvelteKit 3, Svelte 5 runes, TypeScript, Vite, Tailwind 4, adapter-static, Acorn
 | `src/lib/editor/arrangement.ts` | Source-derived native sections, pattern views, targeted edits, and timeline phase |
 | `src/lib/editor/modifiers.ts` | Source-derived modifier views, targeted edits, ordering, and queued reference reconciliation |
 | `src/lib/editor/composition.ts` | Track lifecycle, note/degree edits, instruments, and row sounds |
+| `src/lib/editor/output.ts`, `midi.ts` | Bounded scheduled-event observations, timestamped MIDI mirroring and device lifecycle |
 | `src/lib/editor/playback.ts` | Injected runtime, serialized live evaluations, latest-version queue, Stop/restart cancellation |
 | `src/lib/runtime.ts` | Lazy audio initialization, pinned Strudel boundary, scheduler clock, registry, isolated cancellable previews |
-| `src/lib/persistence/` | Versioned JSON validation, source/model restoration, exports, and deterministic templates |
+| `src/lib/persistence/` | Versioned JSON validation, source/model restoration, local Strudel share-link import, exports, and deterministic templates |
 | `src/lib/components/`, `src/routes/+page.svelte` | Model-derived controls, project files, piano roll, sound browser, mixer, and status |
 | `scripts/verify-strudel.mjs` | Pinned-bundle API/event probes without audio; all templates are also evaluated here |
 
@@ -65,6 +66,10 @@ The model handles ordered tempo declarations, labeled/native tracks, raw stateme
 The visual grid/piano roll supports flat, equally spaced atom/rest rows up to 64 steps. Notes accept pitch names/MIDI integers; degree editing requires an explicit string scale. Nested/variable timing, unscaled sample-number sequences, raw sources, and opaque patterns remain code-only. Parallel note rows can express chords; independent note durations and arbitrary timing quantization are outside v1. Numeric controls preserve finite exact thousandths within ±1e9; other valid numeric/expression source remains verbatim and read-only until explicitly replaced. Suggested control ranges do not clamp imported values.
 
 Native labels encode mute/solo, and metadata comments retain IDs/display names and explicit raw choices. They work as ordinary Strudel code. Clock-based playheads only apply to supported, audible, synchronized rows without opaque timing calls; exact event/token highlighting is deferred. See [M1 contracts](docs/m1-model.md) and [M3 boundaries](docs/m3-composition.md) for details.
+
+Runtime output below the mixer provides an opt-in audio scope and read-only note-gate history, plus explicit Web MIDI connection, device/channel/velocity selection, and note mirroring. Browser audio continues; unpitched drums and custom dominant outputs are excluded from MIDI. Device settings stay outside project source and reload with mirroring off. See [runtime output contracts and verification](docs/post-v1-output.md).
+
+The project bar also imports native `https://strudel.cc/#…` share links: review decoded code locally, then explicitly import it as a stopped, undoable project load. Unicode and source formatting are preserved; malformed/unsupported links and invalid JavaScript leave the current editor intact. See [share-link contracts and verification](docs/post-v1-share-import.md).
 
 ## Network and runtime behavior
 
@@ -86,9 +91,9 @@ Run the checks above and regenerate [dependency licenses](docs/dependency-licens
 
 ## Evidence and release status
 
-[Spike findings](docs/spike-findings.md), [M1 invariants](docs/m1-model.md), [M2 sync](docs/m2-live-editor.md), [M3 composition](docs/m3-composition.md), [M4/v1 verification](docs/m4-persistence.md), [post-v1 modifiers](docs/post-v1-modifiers.md), and [arrangements](docs/post-v1-arrangement.md) record implementation evidence and limits. Current local checks pass: **157 unit/invariant tests, 30 Chromium browser tests, static build, type checking, and Lighthouse accessibility 100/100** on all three audited screens. Exported Basic beat code played/stopped in strudel.cc; all four templates pass pinned-runtime probes.
+[Spike findings](docs/spike-findings.md), [M1 invariants](docs/m1-model.md), [M2 sync](docs/m2-live-editor.md), [M3 composition](docs/m3-composition.md), [M4/v1 verification](docs/m4-persistence.md), [post-v1 modifiers](docs/post-v1-modifiers.md), [arrangements](docs/post-v1-arrangement.md), [runtime output](docs/post-v1-output.md), and [share-link import](docs/post-v1-share-import.md) record implementation evidence and limits. Current local checks pass: **180 unit/invariant tests, 36 Chromium browser tests, static build, type checking, and Lighthouse accessibility 100/100** on all three audited screens. Exported Basic beat code played/stopped in strudel.cc; all four templates pass pinned-runtime probes.
 
-The owner verified M0. Later next-phase requests authorized implementation without supplying new listening reports. **M2/M3/v1 human listening acceptance and a remote CI result for the local changes remain unreported.** v1 implementation is complete; the release gate is not claimed closed. The subsequent next-phase request authorized the first stretch item: visual modifiers are now implemented. The next phase adds per-track arrangements with editable sections and native Strudel phase behavior. MIDI/output visualizers and share-link import remain separate backlog items.
+The owner verified M0. Later next-phase requests authorized implementation without supplying new listening reports. **M2/M3/v1 human listening acceptance and a remote CI result for the local changes remain unreported.** v1 implementation is complete; the release gate is not claimed closed. The subsequent next-phase request authorized the first stretch item: visual modifiers are now implemented. The next phase adds per-track arrangements with editable sections and native Strudel phase behavior. MIDI note mirroring and runtime scope/piano-roll visualizers are implemented. Physical MIDI hardware verification is still unreported; local Strudel share-link review/import is now implemented, completing the listed stretch backlog.
 
 ## License and source availability
 

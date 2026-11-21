@@ -198,3 +198,33 @@ input:disabled { color: #89957e; }
 .arrangement-outer summary { cursor: pointer; font-weight: 700; padding: .5rem 0; }
 .section-tools .actions { flex-wrap: wrap; width: 100%; }
 .arrangement-section strong { overflow-wrap: anywhere; }
+
+/* Runtime observation and opt-in device output. */
+.output-panel { border-top: 1px solid #30392a; padding: 20px; }
+.output-heading { display: flex; gap: 1rem; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.output-toggle { display: flex; gap: .5rem; align-items: center; font-size: 12px; }
+.output-toggle input { width: auto; accent-color: #c3ed87; }
+.output-visualizers { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+.output-visualizers figure { min-width: 0; margin: 0; }
+.output-visualizers figcaption { font-size: 12px; margin-bottom: .5rem; color: #c9d9b9; }
+.output-scope, .output-piano { display: block; width: 100%; background: #111710; border: 1px solid #455039; border-radius: 5px; }
+.scope-center { stroke: #455039; }
+.scope-trace { stroke: #c3ed87; stroke-width: 1.5; fill: none; }
+.output-piano rect { fill: #c3ed87; }
+.output-piano text { fill: #c9d9b9; font-size: 12px; }
+.piano-now { stroke: #e7e9e2; }
+.output-notes { color: #c9d9b9; font-size: 12px; overflow-wrap: anywhere; }
+.midi-output h3 { font-size: 14px; }
+.midi-tools { display: flex; gap: .75rem; flex-wrap: wrap; align-items: end; }
+.midi-tools label { display: flex; flex-direction: column; gap: .35rem; font-size: 12px; }
+.midi-tools input { width: 90px; }
+.midi-tools select { max-width: 240px; }
+@media (max-width: 650px) { .output-visualizers { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .scope-trace { opacity: .7; } }
+
+.share-import { margin: 1rem 0; border-top: 1px solid #30392a; padding-top: 1rem; }
+.share-import summary { cursor: pointer; font-size: 13px; font-weight: 650; padding: .5rem 0; }
+.share-import label { display: block; color: #c9d9b9; font-size: 12px; }
+.share-url { display: block; border: 1px solid #455039; border-radius: 5px; background: #111710; min-height: 5rem; max-height: 16rem; padding: .5rem; font: 12px/1.6 ui-monospace, monospace; overflow-wrap: anywhere; }
+.share-review h3 { font-size: 14px; margin-top: 1rem; }
+.share-preview { max-height: 20rem; overflow: auto; padding: 1rem; margin: .75rem 0; border: 1px solid #455039; border-radius: 5px; background: #111710; white-space: pre-wrap; overflow-wrap: anywhere; }

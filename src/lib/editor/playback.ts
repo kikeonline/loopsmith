@@ -1,3 +1,4 @@
+import type { OutputEvent, OutputSnapshot } from './output';
 import { createRuntime, type LiveRuntime } from '../runtime';
 export interface PlaybackState { playing: boolean; loading: boolean; error: string; activeCode: string }
 
@@ -13,13 +14,21 @@ export class Playback {
   private wanted = false;
   private revision = 0;
   private unsubscribe?: () => void;
+  private unsubscribeEvents?: () => void;
+  private eventListeners = new Set<(event: OutputEvent) => void>();
+  private stopListeners = new Set<() => void>();
+  onEvent(callback: (event: OutputEvent) => void) { this.eventListeners.add(callback); return () => { this.eventListeners.delete(callback); }; }
+  onStop(callback: () => void) { this.stopListeners.add(callback); return () => { this.stopListeners.delete(callback); }; }
+  monitor(): OutputSnapshot { return this.runtime?.monitor?.() ?? {now:performance.now(),events:[],waveform:[]}; }
+  releaseMonitor() { this.runtime?.releaseMonitor?.(); }
   constructor(private changed: (state: PlaybackState) => void, private factory: () => Promise<LiveRuntime> = createRuntime) {}
   private notify() { this.changed({ ...this.state }); }
   private getRuntime(): Promise<LiveRuntime> {
     if (this.runtime) return Promise.resolve(this.runtime);
     return this.loadingRuntime ??= this.factory().then(runtime => {
-      if (this.disposed) { runtime.stop(); throw new Error('Editor is closed'); }
+      if (this.disposed) { runtime.stop(); runtime.destroy?.(); throw new Error('Editor is closed'); }
       this.runtime = runtime;
+      this.unsubscribeEvents = runtime.onEvent?.(event => { if (this.wanted) for (const callback of this.eventListeners) callback(event); });
       this.unsubscribe = runtime.onError(error => { if (this.wanted) { this.state.error = error.message; this.notify(); } });
       return runtime;
     }).catch(error => { this.loadingRuntime = undefined; throw error; });
@@ -53,6 +62,6 @@ export class Playback {
     this.running = false;
   }
   cycle() { return this.runtime?.cycle() ?? 0; }
-  stop() { this.revision++; this.stopPreview(); this.wanted = false; this.pending = undefined; this.runtime?.stop(); this.state.playing = false; this.state.loading = false; this.notify(); }
-  destroy() { this.disposed = true; this.stop(); this.unsubscribe?.(); }
+  stop() { this.revision++; this.stopPreview(); this.wanted = false; this.pending = undefined; this.runtime?.stop(); for (const callback of this.stopListeners) callback(); this.state.playing = false; this.state.loading = false; this.notify(); }
+  destroy() { this.disposed = true; this.stop(); this.unsubscribe?.(); this.unsubscribeEvents?.(); this.runtime?.destroy?.(); this.eventListeners.clear(); this.stopListeners.clear(); }
 }

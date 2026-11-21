@@ -35,3 +35,5 @@ Section controls reuse the existing pattern editor through isolated parsed sourc
 - Orca browser inspection at `http://127.0.0.1:5173/`: rendered two-section arrangement at desktop and 390px mobile widths without horizontal page overflow, played it with the real runtime, observed the current-section highlight advance, and stopped playback. This does not establish human listening acceptance.
 
 M2/M3/v1 listening acceptance and a remote CI result remain unreported. MIDI/output visualizers and share-link import remain separate backlog items. No deployment or release-gate closure is claimed.
+
+The following next-phase request is implemented in [MIDI and runtime output](post-v1-output.md).

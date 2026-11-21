@@ -73,3 +73,20 @@ describe('sound browser runtime lifecycle', () => {
     expect(playback.state.playing).toBe(false);
   });
 });
+
+describe('output observation lifecycle', () => {
+  it('keeps monitoring lazy and forwards events only while transport wants playback', async () => {
+    const {runtime}=fixture(async () => {});
+    let emit!:(event: import('./output').OutputEvent) => void;
+    const unsubscribe=vi.fn(); runtime.onEvent=callback => {emit=callback;return unsubscribe;};
+    runtime.releaseMonitor=vi.fn(); runtime.destroy=vi.fn();
+    const factory=vi.fn(async () => runtime), playback=new Playback(() => {},factory), listener=vi.fn(), stopped=vi.fn();
+    playback.onEvent(listener); playback.onStop(stopped); playback.monitor(); expect(factory).not.toHaveBeenCalled();
+    playback.play('good'); await flush();
+    const event={id:1,start:0,end:100,note:60,sound:'sine'};
+    emit(event); expect(listener).toHaveBeenCalledWith(event);
+    playback.stop(); expect(stopped).toHaveBeenCalledOnce(); emit(event); expect(listener).toHaveBeenCalledOnce();
+    playback.releaseMonitor(); expect(runtime.releaseMonitor).toHaveBeenCalledOnce();
+    playback.destroy(); expect(unsubscribe).toHaveBeenCalledOnce(); expect(runtime.destroy).toHaveBeenCalledOnce();
+  });
+});

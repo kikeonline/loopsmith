@@ -1,3 +1,4 @@
+import { OutputHistory, type OutputEvent, type OutputSnapshot } from './editor/output';
 import type { Repl } from '@strudel/web';
 
 export interface Runtime {
@@ -7,6 +8,10 @@ export interface Runtime {
 }
 export interface LiveRuntime extends Runtime {
   play(code: string): Promise<void>;
+  onEvent?(callback: (event: OutputEvent) => void): () => void;
+  monitor?(): OutputSnapshot;
+  releaseMonitor?(): void;
+  destroy?(): void;
   onError(callback: (error: Error) => void): () => void;
   sounds?(): SoundInfo[];
   preview?(name: string): Promise<void>;
@@ -19,19 +24,47 @@ export async function createRuntime(): Promise<LiveRuntime> {
   const api = await import('@strudel/web');
   // initStrudel's first-mousedown listener misses the click that loaded this module.
   // Explicitly initialize and resume here, including keyboard-generated clicks.
+  const history = new OutputHistory();
+  const context = api.getAudioContext();
   const ready = api.initStrudel({
+    defaultOutput(hap, deadline, duration, cps, time) {
+      hap.ensureObjectValue();
+      try { history.record(hap, duration, time, context.currentTime, api.valueToMidi); } catch { /* Observation must not block audio. */ }
+      return api.webaudioOutput(hap, deadline, duration, cps, time);
+    },
     prebake: () => api.samples('github:tidalcycles/dirt-samples')
   });
   const [repl] = await Promise.all([ready, api.getAudioContext().resume(), api.initAudio()]);
   const runtime = wrapRepl(repl);
+  let analyser: AnalyserNode | undefined;
+  let tapped: AudioNode | undefined;
+  let samples: Float32Array<ArrayBuffer> | undefined;
+  function releaseMonitor() {
+    if (tapped && analyser) { try { tapped.disconnect(analyser); } catch { /* Graph may have been reset by user code. */ } }
+    analyser?.disconnect(); analyser = undefined; tapped = undefined; samples = undefined;
+  }
+  function monitor(): OutputSnapshot {
+    const snapshot = history.snapshot();
+    const node = api.getSuperdoughAudioController().output.destinationGain;
+    if (node !== tapped) releaseMonitor();
+    if (node && !analyser) {
+      analyser = context.createAnalyser(); analyser.fftSize = 512;
+      samples = new Float32Array(analyser.fftSize); node.connect(analyser); tapped = node;
+    }
+    if (analyser && samples) { analyser.getFloatTimeDomainData(samples); snapshot.waveform = Array.from(samples); }
+    return snapshot;
+  }
   let previewRevision = 0;
   let cancelPreview: (() => void) | undefined;
   const stopPreview = () => { previewRevision++; cancelPreview?.(); cancelPreview = undefined; };
   return {
     ...runtime,
+    onEvent: callback => history.subscribe(callback),
+    monitor, releaseMonitor,
+    destroy() { stopPreview(); runtime.stop(); releaseMonitor(); history.clear(); },
     sounds: () => Object.entries(api.soundMap.get()).map(([name, entry]) => ({ name, type: entry.data?.type ?? 'synth', samples: Array.isArray(entry.data?.samples) ? entry.data.samples.length : 0 })).sort((a, b) => a.name.localeCompare(b.name)),
     stopPreview,
-    stop() { stopPreview(); runtime.stop(); },
+    stop() { stopPreview(); runtime.stop(); releaseMonitor(); history.clear(); },
     async preview(name) {
       stopPreview();
       const request = previewRevision;
