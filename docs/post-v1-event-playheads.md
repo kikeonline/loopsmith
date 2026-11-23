@@ -30,3 +30,5 @@ A four-entry source-literal cache avoids reparsing every frame. Active ranges ar
 - Orca browser at `http://localhost:5173/`: a fresh page load with the real audio runtime reported `sd`, `hh`, `e4` and `sine` token highlights and the matching independently active drum-row slots, with no alerts. Playback was stopped afterwards. Existing work at `http://127.0.0.1:5173/` was preserved.
 
 Earlier main commit [8a2bf61 passed CI](https://github.com/kikeonline/loopsmith/actions/runs/44849009427); CI for this new phase runs after its push. Human listening/v1 release acceptance and physical MIDI-device verification remain unreported. No acceptance gate or deployment is claimed closed by this change.
+
+The next two-phase request is implemented in the [local project library](post-v1-project-library.md) and [native share-link export](post-v1-share-export.md).

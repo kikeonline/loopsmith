@@ -29,3 +29,20 @@ export function readShareUrl(input: string): RestoredProject {
   if (!parsed.ok) throw new Error(`Shared code has a syntax error: ${parsed.error.message}. Open it in Strudel to fix it before importing.`);
   return {file:projectFile('Imported Strudel loop',code,parsed.document),document:parsed.document};
 }
+
+/** Native source-only export, chunked so large projects do not overflow a function argument list. */
+export function createShareUrl(code: string): string {
+  if (!code.length) throw new Error('Add code before creating a share link.');
+  if(!code.length) throw new Error('Add code before creating a share link.');
+  if(code.length>MAX_SHARE_CODE_BYTES) throw new Error('Shared code exceeds the 1,000,000 UTF-8 byte limit. Export project JSON instead.');
+  const bytes=new TextEncoder().encode(code);
+  if(bytes.length>MAX_SHARE_CODE_BYTES) throw new Error('Shared code exceeds the 1,000,000 UTF-8 byte limit. Export project JSON instead.');
+  if(new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes)!==code) throw new Error('Source contains invalid Unicode text. Export project JSON to preserve it.');
+  const parsed=parseDocument(code);
+  if(!parsed.ok) throw new Error(`Fix syntax errors before creating a share link: ${parsed.error.message}. Download code to keep an unfinished draft.`);
+  let binary='';
+  for(let offset=0;offset<bytes.length;offset+=32768) binary+=String.fromCharCode(...bytes.subarray(offset,offset+32768));
+  const url='https://strudel.cc/#'+encodeURIComponent(btoa(binary));
+  if(url.length>MAX_SHARE_URL_LENGTH) throw new Error('The generated share URL exceeds the link-size limit. Export project JSON instead.');
+  return url;
+}

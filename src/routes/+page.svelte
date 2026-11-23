@@ -22,6 +22,7 @@
   let sync = $state<SyncState>({ document: initial.document, error: '', editError: '', queued: 0, lastEditSource: 'code' });
   let audio = $state<PlaybackState>({ playing: false, loading: false, error: '', activeCode: '' });
   let projectName = $state('Untitled loop');
+  let currentCode = $state(INITIAL_CODE);
   let saveStatus = $state('Not yet saved on this device');
   let saveError = $state('');
   let recovery = $state('');
@@ -68,6 +69,7 @@
         catch (cause) { recovery = text; autosavePaused = true; saveStatus = 'Autosave paused'; throw cause; }
       }
     } catch (cause) { saveError = `Could not restore saved work: ${cause instanceof Error ? cause.message : String(cause)}. Existing saved data has not been changed.`; }
+    currentCode = restored?.file.code ?? INITIAL_CODE;
     editor = new EditorSync(editorHost, restored?.file.code ?? INITIAL_CODE, (state, validCode) => {
       sync = state;
       if (validCode !== undefined) playback.update(validCode);
@@ -86,6 +88,7 @@
     return () => { cancelAnimationFrame(frame); editor.destroy(); playback.destroy(); };
   });
   function saveDraft(code: string, document: ParsedDocument) {
+    currentCode = code;
     if (autosavePaused) return;
     try {
       (storage ?? window.localStorage).setItem(STORAGE_KEY, serializeProject(projectFile(projectName, code, document), false));
@@ -133,7 +136,7 @@
     <h1>Make a beat.<br />Meet the code<span class="dot">.</span></h1>
     <p>Tap a step to hear an idea. Watch the code change with you.</p>
   </section>
-  <ProjectBar name={projectName} rename={renameProject} snapshot={() => editor.snapshot()} load={loadProject} {saveStatus} {saveError} {recovery} paused={autosavePaused} resume={resumeAutosave} />
+  <ProjectBar {currentCode} name={projectName} rename={renameProject} snapshot={() => editor.snapshot()} load={loadProject} {saveStatus} {saveError} {recovery} paused={autosavePaused} resume={resumeAutosave} />
   <section class="workspace" aria-label="Strudel playground">
     <div class="transport">
       <div class="actions">

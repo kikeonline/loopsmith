@@ -232,3 +232,13 @@ input:disabled { color: #89957e; }
 .playhead-mode { display: flex; gap: .5rem; align-items: center; font-size: 12px; color: #c9d9b9; }
 .cm-event-playhead { background: #c3ed8740; box-shadow: inset 0 -2px #e8f5ce; border-radius: 2px; }
 .step.on.playhead, .piano-note.on.playhead { box-shadow: inset 0 0 0 3px #18210e; outline: 2px solid #e8f5ce; outline-offset: 2px; }
+
+.project-library { margin: 1rem 0; border-top: 1px solid #30392a; padding-top: 1rem; }
+.project-library summary { cursor: pointer; padding: .5rem 0; font-size: 13px; font-weight: 650; }
+.project-library label { display: flex; flex-direction: column; gap: .4rem; font-size: 12px; color: #c9d9b9; margin: .75rem 0; }
+.project-library select { width: 100%; max-width: 38rem; }
+.library-tools { display: flex; flex-wrap: wrap; gap: .6rem; margin: .75rem 0; }
+.library-damaged { margin-top: .75rem; border-top: 1px solid #455039; padding-top: .5rem; overflow-wrap: anywhere; }
+.share-export { margin: 1rem 0; border-top: 1px solid #30392a; padding-top: 1rem; }
+.share-export summary { cursor: pointer; padding: .5rem 0; font-size: 13px; font-weight: 650; }
+.share-export label { display: block; font-size: 12px; color: #c9d9b9; }

@@ -2,9 +2,11 @@
   import { parseDocument, type ParsedDocument } from '../project';
   import { downloadText, MAX_FILE_BYTES, projectFile, readProjectFile, safeFilename, serializeProject, type RestoredProject } from '../persistence/project-file';
   import { readShareUrl, MAX_SHARE_URL_LENGTH } from '../persistence/share-url';
+  import ShareExport from './ShareExport.svelte';
+  import ProjectLibrary from './ProjectLibrary.svelte';
   import { TEMPLATES } from '../persistence/templates';
-  let { name, rename, snapshot, load, saveStatus, saveError, recovery, paused, resume }: {
-    name: string; rename: (name: string) => void;
+  let { name, currentCode, rename, snapshot, load, saveStatus, saveError, recovery, paused, resume }: {
+    name: string; currentCode: string; rename: (name: string) => void;
     snapshot: () => { code: string; document: ParsedDocument };
     load: (project: RestoredProject) => void;
     saveStatus: string; saveError: string; recovery: string; paused: boolean; resume: () => void;
@@ -56,6 +58,10 @@
     sharePreview = undefined; shareUrl = '';
     message = 'Imported Strudel share code. Undo restores your previous source. Press Play when you’re ready.';
   }
+  function loadLibrary(restored: RestoredProject) {
+    request++; importing = false; sharePreview = undefined; error = ''; message = '';
+    load(restored);
+  }
   function exportJson() {
     const { code, document } = snapshot();
     const text = serializeProject(projectFile(name, code, document));
@@ -84,6 +90,7 @@
     <button class="flag" onclick={() => act(exportCode)}>Download code</button>
   </div>
   <div class="template-tools"><label>Starter template <select aria-label="Starter template" bind:value={templateId}>{#each TEMPLATES as item}<option value={item.id}>{item.name}</option>{/each}</select></label><button class="flag" onclick={() => act(() => loadSource(template.code, template.name))}>Load template</button><p class="hint">{template.description}</p></div>
+  <ProjectLibrary snapshot={() => { const current = snapshot(); return projectFile(name,current.code,current.document); }} load={loadLibrary} />
   <details class="share-import"><summary>Import Strudel share URL</summary>
     <p class="hint">Paste a strudel.cc link containing code after #. Decoding stays on this device. Review the code before importing; it runs only when you press Play.</p>
     <label>Strudel share URL <textarea class="share-url" aria-label="Strudel share URL" rows="3" maxlength={MAX_SHARE_URL_LENGTH} spellcheck="false" value={shareUrl} oninput={event => { shareUrl = event.currentTarget.value; sharePreview = undefined; }} placeholder="https://strudel.cc/#…"></textarea></label>
@@ -92,6 +99,7 @@
       <section class="share-review" aria-label="Share code review"><h3>Review decoded code</h3><p class="hint">{sharePreview.file.code.length.toLocaleString()} characters · Tracks: {sharePreview.document.project.items.filter(item => item.kind === 'track').length}. Import replaces the current source and stops playback. Undo restores the previous source.</p><textarea class="share-preview" aria-label="Decoded Strudel code" readonly rows="10" value={sharePreview.file.code}></textarea><button class="flag" onclick={() => act(importShare)}>Import reviewed code</button></section>
     {/if}
   </details>
+  <ShareExport code={currentCode} {name} snapshot={()=>snapshot().code} />
   <p class="hint">Saved on this browser only. Export JSON to keep a portable backup. Imports and templates stay stopped until you press Play; load only code you trust.</p>
   {#if message}<p class="project-message" aria-live="polite">{message}</p>{/if}
   {#if error}<p class="error" role="alert">{error} Your editor has not been cleared.</p>{/if}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeShareUrl, readShareUrl, MAX_SHARE_CODE_BYTES, MAX_SHARE_URL_LENGTH } from './share-url';
+import { decodeShareUrl, createShareUrl, readShareUrl, MAX_SHARE_CODE_BYTES, MAX_SHARE_URL_LENGTH } from './share-url';
 import { readProjectFile, serializeProject } from './project-file';
 const link = (code:string) => `https://strudel.cc/#${encodeURIComponent(Buffer.from(code,'utf8').toString('base64'))}`;
 describe('local Strudel share import', () => {
@@ -39,5 +39,28 @@ describe('local Strudel share import', () => {
   });
   it('rejects invalid JavaScript without producing a replacement project', () => {
     expect(() => readShareUrl(link('s('))).toThrow('syntax error');
+  });
+});
+
+
+describe('native Strudel share export',()=>{
+  it('matches an independent encoding vector and decodes back into the importer',()=>{
+    expect(createShareUrl('s("bd")')).toBe('https://strudel.cc/#cygiYmQiKQ%3D%3D');
+    expect(readShareUrl(createShareUrl('s("bd")')).file.code).toBe('s("bd")');
+  });
+  it('preserves Unicode, BOM, mixed line endings, metadata and opaque source exactly',()=>{
+    const code='\uFEFF// café 🌊\r\nglobalThis.__exportExecuted=true;\ndrums:arrange([2,s("bd ~").fast(2)],[1,custom(foo)]).gain(amount);\r\n';
+    const url=createShareUrl(code);expect(url).toBe('https://strudel.cc/#'+encodeURIComponent(Buffer.from(code).toString('base64')));expect(decodeShareUrl(url)).toBe(code);expect('__exportExecuted' in globalThis).toBe(false);
+  });
+  it('chunks large encodings instead of exceeding the function argument limit',()=>{
+    const code='// '+'x'.repeat(250000);expect(decodeShareUrl(createShareUrl(code))).toBe(code);
+  });
+  it('supports the exact decoded byte limit and rejects larger or overlong links',()=>{
+    const code='//'+'x'.repeat(MAX_SHARE_CODE_BYTES-2);expect(decodeShareUrl(createShareUrl(code))).toBe(code);
+    expect(()=>createShareUrl(code+'x')).toThrow('byte limit');expect(()=>createShareUrl('// '+'🌊'.repeat(250001))).toThrow('byte limit');
+    expect(()=>createShareUrl('// '+'\uffff'.repeat(333332))).toThrow('link-size');
+  });
+  it('rejects empty, invalid or non-round-trippable Unicode source instead of altering it',()=>{
+    expect(()=>createShareUrl('')).toThrow('Add code');expect(()=>createShareUrl('s(')).toThrow('Fix syntax');expect(()=>createShareUrl('// \ud800')).toThrow('invalid Unicode');
   });
 });
