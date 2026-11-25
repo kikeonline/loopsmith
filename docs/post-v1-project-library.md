@@ -26,3 +26,5 @@ The disclosure reads lazily when opened. Storage events refresh an open library 
 - Orca inspection at `http://localhost:5173/`: saved a copy, observed its name/time/track count, and checked the open controls at desktop and 390px widths without horizontal page overflow. Existing workspace source stayed intact and playback remained stopped. The original work at `http://127.0.0.1:5173/` was preserved.
 
 This is an implementation/automated-verification report. Human listening/release acceptance and physical MIDI verification remain unreported; no release gate or deployment is claimed closed.
+
+The next phase adds [whole-library backup and restore](post-v1-library-backup.md), including exact damaged-data recovery, a review step, additive conflict handling and retry after partial storage failures.

@@ -1,4 +1,5 @@
 import { MAX_FILE_BYTES, readProjectFile, serializeProject, type ProjectFile, type RestoredProject } from './project-file';
+import { readLibraryBackup, serializeLibraryBackup, type BackupEntry, type LibraryBackup } from './library-backup';
 export const LIBRARY_PREFIX = 'loopsmith.library.project.v1.';
 export const MAX_LIBRARY_COPIES = 30;
 const ENTRY_FORMAT = 'loopsmith-library-copy';
@@ -8,6 +9,12 @@ export interface LibraryCopy { id: string; name: string; savedAt: string; tracks
 export interface DamagedCopy { id: string; error: string; raw: string; removable: boolean }
 export interface LibraryListing { copies: LibraryCopy[]; damaged: DamagedCopy[] }
 export interface RemovedCopy { id: string; raw: string }
+export interface BackupReview {
+  backup: LibraryBackup;
+  items: { entry: BackupEntry; name: string; damaged: boolean; status: 'add'|'identical'|'conflict' }[];
+  additions: number; identical: number; conflicts: number; available: number;
+}
+export interface BackupRestoreResult { added: number; identical: number; conflicts: number; pending: number; error: string }
 interface Entry { format: typeof ENTRY_FORMAT; version: 1; id: string; savedAt: string; file: ProjectFile }
 function key(id: string) { if (!validId(id)) throw new Error('Invalid saved-copy identity'); return LIBRARY_PREFIX+id; }
 function readEntry(id: string,raw: string): { entry: Entry; restored: RestoredProject } {
@@ -63,5 +70,42 @@ export class ProjectLibrary {
     if(current===removed.raw) return;
     if(current!==null) throw new Error('Another saved copy now uses that identity; it has not been overwritten.');
     this.storage.setItem(name,removed.raw);
+  }
+  exportBackup(): string {
+    const entries: BackupEntry[] = [];
+    for (const id of this.ids()) {
+      const raw = this.storage.getItem(LIBRARY_PREFIX+id);
+      if (raw !== null) entries.push({id,raw});
+    }
+    return serializeLibraryBackup(entries,this.now());
+  }
+  reviewBackup(text: string): BackupReview {
+    const backup = readLibraryBackup(text);
+    const items = backup.entries.map(entry => {
+      const current = this.storage.getItem(LIBRARY_PREFIX+entry.id);
+      const status = current === entry.raw ? 'identical' : current === null ? 'add' : 'conflict';
+      let name = 'Damaged saved data', damaged = true;
+      try { name = readEntry(entry.id,entry.raw).restored.file.name || 'Untitled loop'; damaged = false; } catch { /* Exact damaged bytes remain recoverable. */ }
+      return {entry,name,damaged,status} satisfies BackupReview['items'][number];
+    });
+    return {backup,items,additions:items.filter(item=>item.status==='add').length,identical:items.filter(item=>item.status==='identical').length,conflicts:items.filter(item=>item.status==='conflict').length,available:Math.max(0,MAX_LIBRARY_COPIES-this.ids().length)};
+  }
+  /** Add only absent keys; retries skip identical data. Browser storage has no multi-key transaction. */
+  restoreBackup(text: string): BackupRestoreResult {
+    const review = this.reviewBackup(text);
+    if (review.additions > review.available) throw new Error(`This backup needs ${review.additions} free slots; ${review.available} are available. Export and remove copies first. No copies have been restored.`);
+    const result: BackupRestoreResult = {added:0,identical:0,conflicts:0,pending:0,error:''};
+    for (const entry of review.backup.entries) {
+      try {
+        const name=LIBRARY_PREFIX+entry.id,current=this.storage.getItem(name);
+        if (current===entry.raw) {result.identical++;continue;}
+        if (current!==null) {result.conflicts++;continue;}
+        if(this.ids().length>=MAX_LIBRARY_COPIES) throw new Error('The library is full.');
+        this.storage.setItem(name,entry.raw);
+        result.added++;
+      } catch(cause) {result.error=cause instanceof Error ? cause.message : String(cause);break;}
+    }
+    result.pending=review.backup.entries.length-result.added-result.identical-result.conflicts;
+    return result;
   }
 }

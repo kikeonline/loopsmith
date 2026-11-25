@@ -239,6 +239,9 @@ input:disabled { color: #89957e; }
 .project-library select { width: 100%; max-width: 38rem; }
 .library-tools { display: flex; flex-wrap: wrap; gap: .6rem; margin: .75rem 0; }
 .library-damaged { margin-top: .75rem; border-top: 1px solid #455039; padding-top: .5rem; overflow-wrap: anywhere; }
+.library-backup { margin-top: 1rem; border-top: 1px solid #455039; padding-top: .5rem; }
+.backup-review { overflow-wrap: anywhere; }
+.backup-review li { margin: .5rem 0; font-size: 13px; }
 .share-export { margin: 1rem 0; border-top: 1px solid #30392a; padding-top: 1rem; }
 .share-export summary { cursor: pointer; padding: .5rem 0; font-size: 13px; font-weight: 650; }
 .share-export label { display: block; font-size: 12px; color: #c9d9b9; }
