@@ -8,13 +8,15 @@
   let selectedId=$state(''),opened=$state(false),error=$state(''),message=$state('');
   let removed=$state.raw<RemovedCopy>();
   let review=$state.raw<BackupReview>();
+  let restoreIds=$state.raw<string[]>([]);
   let backupText=$state(''),readingBackup=$state(false);
   let backupInput: HTMLInputElement;
   let backupRequest=0;
   let store: ProjectLibrary|undefined;
   const selected=$derived(listing.copies.find(copy => copy.id===selectedId));
+  const selectedRestoreCount=$derived(restoreIds.length);
   const library=() => store ??= new ProjectLibrary(window.localStorage);
-  function refresh() { const next=library().list(); listing=next; if(!next.copies.some(copy=>copy.id===selectedId)) selectedId=''; if(backupText)review=library().reviewBackup(backupText); }
+  function refresh() { const next=library().list(); listing=next; if(!next.copies.some(copy=>copy.id===selectedId)) selectedId=''; if(backupText){review=library().reviewBackup(backupText);restoreIds=restoreIds.filter(id=>review!.items.some(item=>item.entry.id===id&&item.status==='add'));} }
   function act(operation:()=>void) { error='';message='';try{operation();}catch(cause){error=cause instanceof Error ? cause.message : String(cause);} }
   function save() { const id=library().save(snapshot());refresh();selectedId=id;message='Saved a new project copy. Existing copies and your editor are unchanged.'; }
   function open() { if(!selected)return;load(library().open(selected.id,selected.raw));message='Opened saved copy. Undo restores the previous source; press Play when ready.'; }
@@ -22,21 +24,22 @@
   function restore() { if(!removed)return;library().restore(removed);const id=removed.id;removed=undefined;refresh();selectedId=listing.copies.some(copy=>copy.id===id)?id:'';message='Saved copy restored.'; }
   function exportSelected() { if(!selected)return;const {file}=library().open(selected.id,selected.raw);downloadText(serializeProject(file),`${safeFilename(file.name)}.loopsmith.json`,'application/json');message='Saved copy exported without opening it.'; }
   function exportBackup() { downloadText(library().exportBackup(),'loopsmith-library.backup.json','application/json');message='Library backup downloaded, including damaged saved data. Unsaved editor changes are not included; save a project copy to include them.'; }
-  function cancelBackup() { backupRequest++;readingBackup=false;backupText='';review=undefined;message='Backup review cleared. No copies were changed.'; }
+  function cancelBackup() { backupRequest++;readingBackup=false;backupText='';review=undefined;restoreIds=[];message='Backup review cleared. No copies were changed.'; }
   async function readBackup(event:Event) {
     const input=event.currentTarget as HTMLInputElement,file=input.files?.[0];input.value='';if(!file)return;
-    const request=++backupRequest;readingBackup=true;backupText='';review=undefined;error='';message='';
+    const request=++backupRequest;readingBackup=true;backupText='';review=undefined;restoreIds=[];error='';message='';
     try {
       if(file.size>MAX_BACKUP_BYTES)throw new Error('Library backups support up to 32 MiB.');
       const text=await file.text();if(request!==backupRequest)return;
       const next=library().reviewBackup(text);backupText=text;review=next;
+      restoreIds=next.items.filter(item=>item.status==='add').map(item=>item.entry.id);
       message='Backup reviewed locally. Nothing has been restored. Existing copies will be kept.';
     }catch(cause){if(request===backupRequest)error=cause instanceof Error ? cause.message : String(cause);}
     finally{if(request===backupRequest)readingBackup=false;}
   }
   function restoreBackup() {
     if(!review||!backupText)return;
-    const result=library().restoreBackup(backupText);
+    const result=library().restoreBackup(backupText,restoreIds);
     message=`Restored: ${result.added}. Already saved: ${result.identical}. Conflicts kept: ${result.conflicts}. Not processed: ${result.pending}. Your editor and playback are unchanged.`;
     if(result.error)error=`${result.error} Some entries may have been restored. Keep this backup and retry; identical copies will be skipped.`;
     refresh();
@@ -64,9 +67,11 @@
         <h3>Review library backup</h3>
         <p class="hint">Entries: {review.items.length}. To add: {review.additions}. Already saved: {review.identical}. Conflicts kept: {review.conflicts}. Free slots: {review.available}.</p>
         <p class="hint">Conflicting identities are kept on this browser; their backup data remains in your file. Damaged entries are retained for recovery and cannot be opened as projects. Keep the backup until you have checked the restored copies. If storage fills during restore, completed entries remain saved and you can retry.</p>
-        <ul>{#each review.items as item (item.entry.id)}<li><strong>{item.name}</strong> · {item.entry.id.slice(0,80)||'(empty identity)'} · {item.status==='add'?'Add':item.status==='identical'?'Already saved':'Conflict: keep existing'}{item.damaged?' · recovery data':''}</li>{/each}</ul>
-        {#if review.additions>review.available}<p class="hint">Not enough free slots. Export and remove copies, then review again. Nothing will be restored until there is enough room.</p>{/if}
-        <button class="flag" disabled={!review.additions||review.additions>review.available} onclick={()=>act(restoreBackup)}>Restore missing library entries</button>
+        <div class="library-tools"><button class="flag" disabled={!review.additions} onclick={()=>{restoreIds=review!.items.filter(item=>item.status==='add').map(item=>item.entry.id);}}>Select all missing entries</button><button class="flag" disabled={!selectedRestoreCount} onclick={()=>{restoreIds=[];}}>Clear restore selection</button></div>
+        <p class="hint" aria-live="polite">Selected to restore: {selectedRestoreCount}. Counts after restore refer to this selection. Unselected entries remain in your backup file.</p>
+        <ul>{#each review.items as item,index (item.entry.id)}<li>{#if item.status==='add'}<label class="backup-choice"><input type="checkbox" aria-label={`Restore entry ${index+1}: ${item.name}`} checked={restoreIds.includes(item.entry.id)} onchange={event=>{restoreIds=event.currentTarget.checked?[...restoreIds,item.entry.id]:restoreIds.filter(id=>id!==item.entry.id);}} /><span><strong>{item.name}</strong> · {item.entry.id.slice(0,80)||'(empty identity)'} · Add{item.damaged?' · recovery data':''}</span></label>{:else}<strong>{item.name}</strong> · {item.entry.id.slice(0,80)||'(empty identity)'} · {item.status==='identical'?'Already saved':'Conflict: keep existing'}{item.damaged?' · recovery data':''}{/if}</li>{/each}</ul>
+        {#if selectedRestoreCount>review.available}<p class="hint">Not enough free slots. Select fewer entries, or export and remove copies. Nothing will be restored until the selection fits.</p>{/if}
+        <button class="flag" disabled={!selectedRestoreCount||selectedRestoreCount>review.available} onclick={()=>act(restoreBackup)}>Restore missing library entries</button>
       </section>
     {/if}
   </details>

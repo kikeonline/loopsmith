@@ -13,6 +13,31 @@ function setup() {const storage=new MemoryStorage();return {storage,library:new 
 const backup=(entries:{id:string;raw:string}[])=>serializeLibraryBackup(entries,time);
 
 describe('portable library backups',()=>{
+  it('restores a chosen subset when the whole backup exceeds available capacity',()=>{
+    const {library,storage}=setup();for(let i=0;i<MAX_LIBRARY_COPIES-1;i++)storage.setItem(LIBRARY_PREFIX+i,'keep');
+    const text=backup([{id:'a',raw:'a'},{id:'b',raw:'b'}]);
+    expect(()=>library.restoreBackup(text)).toThrow('free slots');
+    expect(library.restoreBackup(text,['b'])).toEqual({added:1,identical:0,conflicts:0,pending:0,error:''});
+    expect(storage.getItem(LIBRARY_PREFIX+'a')).toBeNull();expect(storage.getItem(LIBRARY_PREFIX+'b')).toBe('b');expect(storage.length).toBe(30);
+  });
+  it('validates selection and the entire envelope before writing, including empty selections',()=>{
+    const {library,storage}=setup(),text=backup([{id:'a',raw:'a'}]);
+    expect(()=>library.restoreBackup(text,['unknown'])).toThrow('unknown');expect(()=>library.restoreBackup(text,['a','a'])).toThrow('duplicate');
+    expect(library.restoreBackup(text,[])).toEqual({added:0,identical:0,conflicts:0,pending:0,error:''});
+    const malformed=JSON.stringify({...JSON.parse(text),entries:[{id:'a',raw:'a'},{id:'unselected',raw:123}]});expect(()=>library.restoreBackup(malformed,['a'])).toThrow();expect(storage.length).toBe(0);
+  });
+  it('rechecks selected identities and never adds unselected entries that disappeared since review',()=>{
+    const {library,storage}=setup();storage.setItem(LIBRARY_PREFIX+'unselected','old');
+    const text=backup([{id:'selected',raw:'incoming'},{id:'unselected',raw:'old'}]);library.reviewBackup(text);
+    storage.removeItem(LIBRARY_PREFIX+'unselected');storage.setItem(LIBRARY_PREFIX+'selected','other tab');
+    expect(library.restoreBackup(text,['selected'])).toEqual({added:0,identical:0,conflicts:1,pending:0,error:''});expect(storage.getItem(LIBRARY_PREFIX+'unselected')).toBeNull();expect(storage.getItem(LIBRARY_PREFIX+'selected')).toBe('other tab');
+  });
+  it('keeps partial-failure counts and retries scoped to selected entries, including malformed identities',()=>{
+    const {library,storage}=setup(),text=backup([{id:'',raw:'empty'},{id:'skip',raw:'skip'},{id:'bad/id',raw:'damaged'}]),write=storage.setItem.bind(storage);
+    storage.setItem=(key,value)=>{if(key===LIBRARY_PREFIX+'bad/id')throw Error('Quota');write(key,value);};
+    expect(library.restoreBackup(text,['','bad/id'])).toEqual({added:1,identical:0,conflicts:0,pending:1,error:'Quota'});storage.setItem=write;
+    expect(library.restoreBackup(text,['','bad/id'])).toEqual({added:1,identical:1,conflicts:0,pending:0,error:''});expect(storage.getItem(LIBRARY_PREFIX+'skip')).toBeNull();expect(storage.getItem(LIBRARY_PREFIX+'bad/id')).toBe('damaged');
+  });
   it('exports exact valid and damaged bytes, excluding workspace and unrelated keys without executing code',()=>{
     const {library,storage}=setup();storage.setItem('loopsmith.project.v1','workspace');storage.setItem('unrelated','private');
     const source='\uFEFF// café 🌊\r\nglobalThis.__backupExecuted=true;\ndrums:s("bd ~").jux( rev );\r\n';

@@ -91,11 +91,15 @@ export class ProjectLibrary {
     return {backup,items,additions:items.filter(item=>item.status==='add').length,identical:items.filter(item=>item.status==='identical').length,conflicts:items.filter(item=>item.status==='conflict').length,available:Math.max(0,MAX_LIBRARY_COPIES-this.ids().length)};
   }
   /** Add only absent keys; retries skip identical data. Browser storage has no multi-key transaction. */
-  restoreBackup(text: string): BackupRestoreResult {
+  restoreBackup(text: string, selectedIds?: readonly string[]): BackupRestoreResult {
     const review = this.reviewBackup(text);
-    if (review.additions > review.available) throw new Error(`This backup needs ${review.additions} free slots; ${review.available} are available. Export and remove copies first. No copies have been restored.`);
+    const selected = selectedIds === undefined ? undefined : new Set(selectedIds);
+    if (selected && (selected.size !== selectedIds!.length || [...selected].some(id=>!review.backup.entries.some(entry=>entry.id===id)))) throw new Error('Restore selection contains duplicate or unknown identities. No copies have been restored.');
+    const items = review.items.filter(item=>!selected || selected.has(item.entry.id));
+    const additions = items.filter(item=>item.status==='add').length;
+    if (additions > review.available) throw new Error(`This selection needs ${additions} free slots; ${review.available} are available. Choose fewer entries or export and remove copies first. No copies have been restored.`);
     const result: BackupRestoreResult = {added:0,identical:0,conflicts:0,pending:0,error:''};
-    for (const entry of review.backup.entries) {
+    for (const {entry} of items) {
       try {
         const name=LIBRARY_PREFIX+entry.id,current=this.storage.getItem(name);
         if (current===entry.raw) {result.identical++;continue;}
@@ -105,7 +109,7 @@ export class ProjectLibrary {
         result.added++;
       } catch(cause) {result.error=cause instanceof Error ? cause.message : String(cause);break;}
     }
-    result.pending=review.backup.entries.length-result.added-result.identical-result.conflicts;
+    result.pending=items.length-result.added-result.identical-result.conflicts;
     return result;
   }
 }
