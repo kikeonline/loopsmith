@@ -1,0 +1,37 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import type { BackupInspection } from '../persistence/project-library';
+  import { downloadText, serializeProject, safeFilename } from '../persistence/project-file';
+  import { serializeLibraryBackup } from '../persistence/library-backup';
+  let { entry, close }: {entry:BackupInspection;close:()=>void} = $props();
+  let error=$state(''),message=$state('');
+  let heading: HTMLHeadingElement;
+  const previewLimit=20_000;
+  function act(operation:()=>void){error='';message='';try{operation();}catch(cause){error=cause instanceof Error ? cause.message : String(cause);}}
+  function exportProject(){if(entry.kind!=='project')return;const file=entry.restored.file;downloadText(serializeProject(file),`${safeFilename(file.name)}.loopsmith.json`,'application/json');message='Incoming project JSON downloaded. Use Import project JSON when ready to open it.';}
+  function exportRaw(){const text=serializeLibraryBackup([{id:entry.id,raw:entry.raw}],new Date().toISOString());downloadText(text,'loopsmith-entry.backup.json','application/json');message='Original entry downloaded in a one-entry library backup, including all saved data.';}
+  onMount(()=>heading.focus());
+</script>
+<section class="backup-inspection" aria-label="Backup entry inspection">
+  <h4 tabindex="-1" bind:this={heading}>Inspect {entry.kind==='project'?(entry.restored.file.name||'Untitled loop'):'damaged saved data'}</h4>
+  <p class="hint">This is the incoming backup entry, including when it conflicts with a saved copy on this browser. Inspection and downloads leave the library, current editor and playback unchanged.</p>
+  {#if entry.kind==='project'}
+    <p class="hint">Saved: {new Date(entry.savedAt).toLocaleString()}. Project JSON includes the full current draft, last-good source and saved track identities.</p>
+    <label>Incoming project source <textarea class="backup-source" aria-label="Incoming project source" readonly spellcheck="false" rows="8" value={entry.restored.file.code.slice(0,previewLimit)}></textarea></label>
+    {#if entry.restored.file.code.length>previewLimit}<p class="hint">Showing the first {previewLimit.toLocaleString()} of {entry.restored.file.code.length.toLocaleString()} source characters. Downloads contain the full data.</p>{/if}
+    {#if entry.restored.file.code!==entry.restored.file.lastGoodCode}
+      <p class="hint">The current draft differs from the last-good source. Both are included in project JSON.</p>
+      <label>Incoming last-good source <textarea class="backup-source" aria-label="Incoming last-good source" readonly spellcheck="false" rows="6" value={entry.restored.file.lastGoodCode.slice(0,previewLimit)}></textarea></label>
+      {#if entry.restored.file.lastGoodCode.length>previewLimit}<p class="hint">Showing the first {previewLimit.toLocaleString()} of {entry.restored.file.lastGoodCode.length.toLocaleString()} last-good source characters. Downloads contain the full data.</p>{/if}
+    {/if}
+    <button class="flag" onclick={()=>act(exportProject)}>Download incoming project JSON</button>
+  {:else}
+    <p class="hint">This entry cannot be opened as a project: {entry.error}. Its original data can still be downloaded for recovery.</p>
+    <label>Incoming saved data <textarea class="backup-source" aria-label="Incoming saved data" readonly spellcheck="false" rows="8" value={entry.raw.slice(0,previewLimit)}></textarea></label>
+    {#if entry.raw.length>previewLimit}<p class="hint">Showing the first {previewLimit.toLocaleString()} of {entry.raw.length.toLocaleString()} saved-data characters. Downloads contain the full data.</p>{/if}
+  {/if}
+  <p class="hint">An entry backup keeps the original saved data in a one-entry library backup. Use Review library backup to inspect or restore it later.</p>
+  <div class="library-tools"><button class="flag" onclick={()=>act(exportRaw)}>Download entry backup</button><button class="flag" onclick={close}>Close entry inspection</button></div>
+  {#if message}<p class="project-message" aria-live="polite">{message}</p>{/if}
+  {#if error}<p class="error" role="alert">{error} The backup and your editor are unchanged.</p>{/if}
+</section>

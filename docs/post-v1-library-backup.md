@@ -37,3 +37,5 @@ The UI checks file size before reading and guards async results with a request i
 - Orca inspection on `http://localhost:5173/` confirmed a backup download and an identical-entry review with restore disabled. Open controls were visually checked at desktop and 390px widths; the 390px document had no horizontal overflow. The existing saved copy and editor source were preserved, with playback stopped. Fresh-browser recovery and live-playback safety are covered by the browser suite.
 
 Human listening/release acceptance and physical MIDI verification remain unreported. This phase does not close those gates or deploy the application.
+
+The subsequent [entry inspection/export phase](post-v1-backup-inspection.md) adds read-only draft/last-good or damaged-data previews, incoming project JSON export, and exact one-entry recovery backups for missing, identical and conflicting rows.

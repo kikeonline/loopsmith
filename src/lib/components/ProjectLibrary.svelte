@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ProjectLibrary, LIBRARY_PREFIX, type LibraryListing, type RemovedCopy, type BackupReview } from '../persistence/project-library';
+  import { ProjectLibrary, LIBRARY_PREFIX, inspectBackupEntry, type BackupInspection, type LibraryListing, type RemovedCopy, type BackupReview } from '../persistence/project-library';
+  import BackupEntryInspector from './BackupEntryInspector.svelte';
   import { MAX_BACKUP_BYTES } from '../persistence/library-backup';
   import { downloadText, serializeProject, safeFilename, type ProjectFile, type RestoredProject } from '../persistence/project-file';
   let { snapshot, load }: {snapshot:()=>ProjectFile;load:(project:RestoredProject)=>void} = $props();
@@ -8,6 +9,8 @@
   let selectedId=$state(''),opened=$state(false),error=$state(''),message=$state('');
   let removed=$state.raw<RemovedCopy>();
   let review=$state.raw<BackupReview>();
+  let inspection=$state.raw<BackupInspection>();
+  let inspectionTrigger: HTMLButtonElement|undefined;
   let restoreIds=$state.raw<string[]>([]);
   let backupText=$state(''),readingBackup=$state(false);
   let backupInput: HTMLInputElement;
@@ -24,10 +27,12 @@
   function restore() { if(!removed)return;library().restore(removed);const id=removed.id;removed=undefined;refresh();selectedId=listing.copies.some(copy=>copy.id===id)?id:'';message='Saved copy restored.'; }
   function exportSelected() { if(!selected)return;const {file}=library().open(selected.id,selected.raw);downloadText(serializeProject(file),`${safeFilename(file.name)}.loopsmith.json`,'application/json');message='Saved copy exported without opening it.'; }
   function exportBackup() { downloadText(library().exportBackup(),'loopsmith-library.backup.json','application/json');message='Library backup downloaded, including damaged saved data. Unsaved editor changes are not included; save a project copy to include them.'; }
-  function cancelBackup() { backupRequest++;readingBackup=false;backupText='';review=undefined;restoreIds=[];message='Backup review cleared. No copies were changed.'; }
+  function cancelBackup() { backupRequest++;readingBackup=false;backupText='';review=undefined;restoreIds=[];inspection=undefined;inspectionTrigger=undefined;message='Backup review cleared. No copies were changed.'; }
+  function inspectEntry(id:string,trigger:HTMLButtonElement){inspection=undefined;inspectionTrigger=trigger;inspection=inspectBackupEntry(backupText,id);}
+  function closeInspection(){inspection=undefined;if(inspectionTrigger?.isConnected)inspectionTrigger.focus();inspectionTrigger=undefined;}
   async function readBackup(event:Event) {
     const input=event.currentTarget as HTMLInputElement,file=input.files?.[0];input.value='';if(!file)return;
-    const request=++backupRequest;readingBackup=true;backupText='';review=undefined;restoreIds=[];error='';message='';
+    const request=++backupRequest;readingBackup=true;backupText='';review=undefined;restoreIds=[];inspection=undefined;inspectionTrigger=undefined;error='';message='';
     try {
       if(file.size>MAX_BACKUP_BYTES)throw new Error('Library backups support up to 32 MiB.');
       const text=await file.text();if(request!==backupRequest)return;
@@ -69,7 +74,8 @@
         <p class="hint">Conflicting identities are kept on this browser; their backup data remains in your file. Damaged entries are retained for recovery and cannot be opened as projects. Keep the backup until you have checked the restored copies. If storage fills during restore, completed entries remain saved and you can retry.</p>
         <div class="library-tools"><button class="flag" disabled={!review.additions} onclick={()=>{restoreIds=review!.items.filter(item=>item.status==='add').map(item=>item.entry.id);}}>Select all missing entries</button><button class="flag" disabled={!selectedRestoreCount} onclick={()=>{restoreIds=[];}}>Clear restore selection</button></div>
         <p class="hint" aria-live="polite">Selected to restore: {selectedRestoreCount}. Counts after restore refer to this selection. Unselected entries remain in your backup file.</p>
-        <ul>{#each review.items as item,index (item.entry.id)}<li>{#if item.status==='add'}<label class="backup-choice"><input type="checkbox" aria-label={`Restore entry ${index+1}: ${item.name}`} checked={restoreIds.includes(item.entry.id)} onchange={event=>{restoreIds=event.currentTarget.checked?[...restoreIds,item.entry.id]:restoreIds.filter(id=>id!==item.entry.id);}} /><span><strong>{item.name}</strong> · {item.entry.id.slice(0,80)||'(empty identity)'} · Add{item.damaged?' · recovery data':''}</span></label>{:else}<strong>{item.name}</strong> · {item.entry.id.slice(0,80)||'(empty identity)'} · {item.status==='identical'?'Already saved':'Conflict: keep existing'}{item.damaged?' · recovery data':''}{/if}</li>{/each}</ul>
+        <ul>{#each review.items as item,index (item.entry.id)}<li>{#if item.status==='add'}<label class="backup-choice"><input type="checkbox" aria-label={`Restore entry ${index+1}: ${item.name}`} checked={restoreIds.includes(item.entry.id)} onchange={event=>{restoreIds=event.currentTarget.checked?[...restoreIds,item.entry.id]:restoreIds.filter(id=>id!==item.entry.id);}} /><span><strong>{item.name}</strong> · {item.entry.id.slice(0,80)||'(empty identity)'} · Add{item.damaged?' · recovery data':''}</span></label>{:else}<strong>{item.name}</strong> · {item.entry.id.slice(0,80)||'(empty identity)'} · {item.status==='identical'?'Already saved':'Conflict: keep existing'}{item.damaged?' · recovery data':''}{/if}<button class="flag" aria-label={`Inspect backup entry ${index+1}: ${item.name}`} aria-expanded={inspection?.id===item.entry.id} onclick={event=>act(()=>inspectEntry(item.entry.id,event.currentTarget))}>Inspect backup entry</button></li>{/each}</ul>
+        {#if inspection}{#key inspection}<BackupEntryInspector entry={inspection} close={closeInspection} />{/key}{/if}
         {#if selectedRestoreCount>review.available}<p class="hint">Not enough free slots. Select fewer entries, or export and remove copies. Nothing will be restored until the selection fits.</p>{/if}
         <button class="flag" disabled={!selectedRestoreCount||selectedRestoreCount>review.available} onclick={()=>act(restoreBackup)}>Restore missing library entries</button>
       </section>

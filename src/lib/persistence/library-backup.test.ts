@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseDocument } from '../project';
 import { projectFile } from './project-file';
 import { LIBRARY_BACKUP_FORMAT, MAX_BACKUP_BYTES, MAX_BACKUP_ENTRIES, readLibraryBackup, serializeLibraryBackup } from './library-backup';
-import { LIBRARY_PREFIX, MAX_LIBRARY_COPIES, ProjectLibrary } from './project-library';
+import { LIBRARY_PREFIX, MAX_LIBRARY_COPIES, ProjectLibrary, inspectBackupEntry } from './project-library';
 
 class MemoryStorage {
   data=new Map<string,string>();get length(){return this.data.size;}key(index:number){return [...this.data.keys()][index]??null;}getItem(key:string){return this.data.get(key)??null;}setItem(key:string,value:string){this.data.set(key,value);}removeItem(key:string){this.data.delete(key);}
@@ -13,6 +13,29 @@ function setup() {const storage=new MemoryStorage();return {storage,library:new 
 const backup=(entries:{id:string;raw:string}[])=>serializeLibraryBackup(entries,time);
 
 describe('portable library backups',()=>{
+  it('inspects incoming projects without reading or mutating a conflicting local copy or executing source',()=>{
+    const {library,storage}=setup(),source='\uFEFF// café 🌊\r\nglobalThis.__inspectionExecuted=true;\ndrums:s("bd ~");\r\n';
+    const id=library.save({...file(source,'Incoming'),code:'drums:s('}),text=library.exportBackup(),original=storage.getItem(LIBRARY_PREFIX+id)!;
+    storage.setItem(LIBRARY_PREFIX+id,'local conflict');const result=inspectBackupEntry(text,id);
+    expect(result.kind).toBe('project');if(result.kind!=='project')throw Error('Expected project');
+    expect(result.raw).toBe(original);expect(result.restored.file.code).toBe('drums:s(');expect(result.restored.file.lastGoodCode).toBe(source);expect(result.restored.file.project).toEqual(file(source,'Incoming').project);expect(storage.getItem(LIBRARY_PREFIX+id)).toBe('local conflict');expect('__inspectionExecuted' in globalThis).toBe(false);
+  });
+  it('inspects malformed identities and raw data as recoverable entries without rewriting the bytes',()=>{
+    for(const id of ['', '../key', '__proto__']) {
+      const raw='broken\r\n🌊\uD800'+('x'.repeat(21_000)),result=inspectBackupEntry(backup([{id,raw}]),id);
+      expect(result).toMatchObject({id,raw,kind:'damaged'});expect(readLibraryBackup(backup([{id:result.id,raw:result.raw}])).entries).toEqual([{id,raw}]);
+    }
+  });
+  it('rejects unknown inspection identities and fully validates the outer backup first',()=>{
+    const text=backup([{id:'a',raw:'a'}]);expect(()=>inspectBackupEntry(text,'missing')).toThrow('not in the reviewed backup');expect(()=>inspectBackupEntry('{','a')).toThrow('valid library backup JSON');
+    const duplicate={...JSON.parse(text),entries:[{id:'a',raw:'first'},{id:'a',raw:'second'}]};expect(()=>inspectBackupEntry(JSON.stringify(duplicate),'a')).toThrow('duplicate');
+  });
+  it('keeps unsupported saved-copy versions and mismatched cached models as damaged incoming data',()=>{
+    const {library}=setup(),id=library.save(file()),raw=library.list().copies[0].raw;
+    for(const changed of [{...JSON.parse(raw),version:2},{...JSON.parse(raw),id:'different'},{...JSON.parse(raw),file:{...JSON.parse(raw).file,lastGoodCode:'drums:s("sd")'}}]) {
+      const data=JSON.stringify(changed);expect(inspectBackupEntry(backup([{id,raw:data}]),id)).toMatchObject({id,raw:data,kind:'damaged'});
+    }
+  });
   it('restores a chosen subset when the whole backup exceeds available capacity',()=>{
     const {library,storage}=setup();for(let i=0;i<MAX_LIBRARY_COPIES-1;i++)storage.setItem(LIBRARY_PREFIX+i,'keep');
     const text=backup([{id:'a',raw:'a'},{id:'b',raw:'b'}]);

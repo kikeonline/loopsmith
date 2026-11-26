@@ -15,6 +15,7 @@ export interface BackupReview {
   additions: number; identical: number; conflicts: number; available: number;
 }
 export interface BackupRestoreResult { added: number; identical: number; conflicts: number; pending: number; error: string }
+export type BackupInspection = BackupEntry & ({kind:'project';restored:RestoredProject;savedAt:string} | {kind:'damaged';error:string});
 interface Entry { format: typeof ENTRY_FORMAT; version: 1; id: string; savedAt: string; file: ProjectFile }
 function key(id: string) { if (!validId(id)) throw new Error('Invalid saved-copy identity'); return LIBRARY_PREFIX+id; }
 function readEntry(id: string,raw: string): { entry: Entry; restored: RestoredProject } {
@@ -22,6 +23,15 @@ function readEntry(id: string,raw: string): { entry: Entry; restored: RestoredPr
   const value = JSON.parse(raw) as Partial<Entry> | null;
   if (!value || typeof value !== 'object' || value.format !== ENTRY_FORMAT || value.version !== 1 || value.id !== id || !validId(id) || typeof value.savedAt !== 'string' || !Number.isFinite(Date.parse(value.savedAt)) || !value.file) throw new Error('Invalid saved-copy format or metadata');
   return {entry:value as Entry,restored:readProjectFile(JSON.stringify(value.file))};
+}
+/** Inspect incoming bytes, independently of any existing local copy with the same identity. */
+export function inspectBackupEntry(text: string,id: string): BackupInspection {
+  const entry=readLibraryBackup(text).entries.find(entry=>entry.id===id);
+  if(!entry)throw new Error('This entry is not in the reviewed backup. Review the backup again.');
+  try {
+    const decoded=readEntry(entry.id,entry.raw);
+    return {...entry,kind:'project',restored:decoded.restored,savedAt:decoded.entry.savedAt};
+  }catch(cause){return {...entry,kind:'damaged',error:cause instanceof Error ? cause.message : String(cause)};}
 }
 /** Immutable copies live in independent keys: saving a new copy never rewrites an index or old project. */
 export class ProjectLibrary {
