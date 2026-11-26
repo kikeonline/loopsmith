@@ -1,22 +1,32 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { BackupInspection } from '../persistence/project-library';
+  import type { BackupInspection, BackupComparison as Comparison } from '../persistence/project-library';
+  import BackupComparison from './BackupComparison.svelte';
   import { downloadText, serializeProject, safeFilename } from '../persistence/project-file';
   import { serializeLibraryBackup } from '../persistence/library-backup';
-  let { entry, close, saveCopy }: {entry:BackupInspection;close:()=>void;saveCopy:(id:string,name:string)=>string} = $props();
+  let { entry, close, saveCopy, compare, libraryRevision }: {entry:BackupInspection;close:()=>void;saveCopy:(id:string,name:string)=>string;compare:(id:string)=>Comparison;libraryRevision:number} = $props();
   let error=$state(''),message=$state('');
   let copyName=$state(''),createdId=$state('');
+  let comparison=$state.raw<Comparison>(),comparedRevision=$state(-1),comparisonNotice=$state(''),comparisonError=$state('');
+  let compareButton: HTMLButtonElement;
   let heading: HTMLHeadingElement;
   const previewLimit=20_000;
   function act(operation:()=>void){error='';message='';try{operation();}catch(cause){error=cause instanceof Error ? cause.message : String(cause);}}
   function exportProject(){if(entry.kind!=='project')return;const file=entry.restored.file;downloadText(serializeProject(file),`${safeFilename(file.name)}.loopsmith.json`,'application/json');message='Incoming project JSON downloaded. Use Import project JSON when ready to open it.';}
   function exportRaw(){const text=serializeLibraryBackup([{id:entry.id,raw:entry.raw}],new Date().toISOString());downloadText(text,'loopsmith-entry.backup.json','application/json');message='Original entry downloaded in a one-entry library backup, including all saved data.';}
   function saveIncoming(){if(createdId||entry.kind!=='project')return;createdId=saveCopy(entry.id,copyName);message='Saved as a new library copy. Choose Open saved project when ready; your editor and playback are unchanged.';}
+  function compareSaved(){comparison=undefined;comparisonNotice='';comparisonError='';try{comparison=compare(entry.id);comparedRevision=libraryRevision;}catch(cause){comparisonError=cause instanceof Error ? cause.message : String(cause);}}
+  function closeComparison(){comparison=undefined;comparisonNotice='';comparisonError='';compareButton.focus();}
+  $effect(()=>{if(comparison&&comparedRevision!==libraryRevision){comparison=undefined;comparisonNotice='Library refreshed. Compare again to read the saved copy.';comparisonError='';}});
   onMount(()=>{if(entry.kind==='project')copyName=entry.restored.file.name;heading.focus();});
 </script>
 <section class="backup-inspection" aria-label="Backup entry inspection">
   <h4 tabindex="-1" bind:this={heading}>Inspect {entry.kind==='project'?(entry.restored.file.name||'Untitled loop'):'damaged saved data'}</h4>
   <p class="hint">This is the incoming backup entry, including when it conflicts with a saved copy on this browser. Inspection and downloads leave the library, current editor and playback unchanged.</p>
+  <div class="library-tools"><button class="flag" bind:this={compareButton} onclick={compareSaved}>Compare with saved copy</button>{#if comparison}<button class="flag" onclick={closeComparison}>Close saved comparison</button>{/if}</div>
+  {#if comparison}{#key comparison}<BackupComparison {comparison} />{/key}{/if}
+  {#if comparisonNotice}<p class="hint" aria-live="polite">{comparisonNotice}</p>{/if}
+  {#if comparisonError}<p class="error" role="alert">Comparison: {comparisonError} The incoming entry and your editor are unchanged.</p>{/if}
   {#if entry.kind==='project'}
     <p class="hint">Saved: {new Date(entry.savedAt).toLocaleString()}. Project JSON includes the full current draft, last-good source and saved track identities.</p>
     <label>Incoming project source <textarea class="backup-source" aria-label="Incoming project source" readonly spellcheck="false" rows="8" value={entry.restored.file.code.slice(0,previewLimit)}></textarea></label>

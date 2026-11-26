@@ -247,6 +247,11 @@ input:disabled { color: #89957e; }
 .backup-choice span { min-width: 0; }
 .backup-inspection { margin: 1rem 0; padding: 1rem; border: 1px solid #455039; border-radius: 5px; }
 .backup-inspection h4 { margin: 0; font-size: 14px; }
+.backup-comparison { border-top: 1px solid #455039; border-bottom: 1px solid #455039; margin: 1rem 0; padding: 1rem 0; }
+.backup-comparison h5, .backup-comparison h6 { font-size: 13px; margin: .5rem 0; }
+.comparison-columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
+.comparison-side { min-width: 0; }
+@media (max-width: 800px) { .comparison-columns { grid-template-columns: minmax(0,1fr); } }
 .incoming-copy { border-top: 1px solid #455039; margin-top: 1rem; padding-top: .5rem; }
 .incoming-copy input { max-width: 38rem; }
 .backup-source { display: block; width: 100%; min-width: 0; max-height: 20rem; overflow: auto; background: #111710; color: #e2edd7; border: 1px solid #455039; border-radius: 5px; padding: .5rem; font: 12px/1.6 ui-monospace, monospace; }

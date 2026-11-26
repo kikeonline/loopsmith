@@ -10,6 +10,7 @@
   let removed=$state.raw<RemovedCopy>();
   let review=$state.raw<BackupReview>();
   let inspection=$state.raw<BackupInspection>();
+  let libraryRevision=$state(0);
   let inspectionTrigger: HTMLButtonElement|undefined;
   let restoreIds=$state.raw<string[]>([]);
   let backupText=$state(''),readingBackup=$state(false);
@@ -19,7 +20,7 @@
   const selected=$derived(listing.copies.find(copy => copy.id===selectedId));
   const selectedRestoreCount=$derived(restoreIds.length);
   const library=() => store ??= new ProjectLibrary(window.localStorage);
-  function refresh() { const next=library().list(); listing=next; if(!next.copies.some(copy=>copy.id===selectedId)) selectedId=''; if(backupText){review=library().reviewBackup(backupText);restoreIds=restoreIds.filter(id=>review!.items.some(item=>item.entry.id===id&&item.status==='add'));} }
+  function refresh() { libraryRevision++;const next=library().list(); listing=next; if(!next.copies.some(copy=>copy.id===selectedId)) selectedId=''; if(backupText){review=library().reviewBackup(backupText);restoreIds=restoreIds.filter(id=>review!.items.some(item=>item.entry.id===id&&item.status==='add'));} }
   function act(operation:()=>void) { error='';message='';try{operation();}catch(cause){error=cause instanceof Error ? cause.message : String(cause);} }
   function save() { const id=library().save(snapshot());refresh();selectedId=id;message='Saved a new project copy. Existing copies and your editor are unchanged.'; }
   function open() { if(!selected)return;load(library().open(selected.id,selected.raw));message='Opened saved copy. Undo restores the previous source; press Play when ready.'; }
@@ -83,7 +84,7 @@
         <div class="library-tools"><button class="flag" disabled={!review.additions} onclick={()=>{restoreIds=review!.items.filter(item=>item.status==='add').map(item=>item.entry.id);}}>Select all missing entries</button><button class="flag" disabled={!selectedRestoreCount} onclick={()=>{restoreIds=[];}}>Clear restore selection</button></div>
         <p class="hint" aria-live="polite">Selected to restore: {selectedRestoreCount}. Counts after restore refer to this selection. Unselected entries remain in your backup file.</p>
         <ul>{#each review.items as item,index (item.entry.id)}<li>{#if item.status==='add'}<label class="backup-choice"><input type="checkbox" aria-label={`Restore entry ${index+1}: ${item.name}`} checked={restoreIds.includes(item.entry.id)} onchange={event=>{restoreIds=event.currentTarget.checked?[...restoreIds,item.entry.id]:restoreIds.filter(id=>id!==item.entry.id);}} /><span><strong>{item.name}</strong> · {item.entry.id.slice(0,80)||'(empty identity)'} · Add{item.damaged?' · recovery data':''}</span></label>{:else}<strong>{item.name}</strong> · {item.entry.id.slice(0,80)||'(empty identity)'} · {item.status==='identical'?'Already saved':'Conflict: keep existing'}{item.damaged?' · recovery data':''}{/if}<button class="flag" aria-label={`Inspect backup entry ${index+1}: ${item.name}`} aria-expanded={inspection?.id===item.entry.id} onclick={event=>act(()=>inspectEntry(item.entry.id,event.currentTarget))}>Inspect backup entry</button></li>{/each}</ul>
-        {#if inspection}{#key inspection}<BackupEntryInspector entry={inspection} close={closeInspection} saveCopy={saveIncomingCopy} />{/key}{/if}
+        {#if inspection}{#key inspection}<BackupEntryInspector entry={inspection} close={closeInspection} saveCopy={saveIncomingCopy} compare={id=>library().compareBackupEntry(backupText,id)} {libraryRevision} />{/key}{/if}
         {#if selectedRestoreCount>review.available}<p class="hint">Not enough free slots. Select fewer entries, or export and remove copies. Nothing will be restored until the selection fits.</p>{/if}
         <button class="flag" disabled={!selectedRestoreCount||selectedRestoreCount>review.available} onclick={()=>act(restoreBackup)}>Restore missing library entries</button>
       </section>

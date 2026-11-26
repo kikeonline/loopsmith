@@ -13,6 +13,34 @@ function setup() {const storage=new MemoryStorage();return {storage,library:new 
 const backup=(entries:{id:string;raw:string}[])=>serializeLibraryBackup(entries,time);
 
 describe('portable library backups',()=>{
+  it('compares identical incoming and saved projects without writes or source execution',()=>{
+    const {library,storage}=setup(),source='globalThis.__comparisonExecuted=true;\ndrums:s("bd ~")',id=library.save(file(source)),text=library.exportBackup(),before=[...storage.data];
+    storage.setItem=()=>{throw Error('Unexpected write');};const comparison=library.compareBackupEntry(text,id);
+    expect(comparison.saved?.kind).toBe('project');expect(comparison.checks).toHaveLength(6);expect(comparison.checks.every(check=>check.equal)).toBe(true);expect([...storage.data]).toEqual(before);expect('__comparisonExecuted' in globalThis).toBe(false);
+  });
+  it('distinguishes metadata/envelope formatting differences from identical project source and model',()=>{
+    const {library,storage}=setup(),id=library.save(file()),text=library.exportBackup(),saved=JSON.parse(storage.getItem(LIBRARY_PREFIX+id)!);
+    saved.file.name='Different title';saved.savedAt='2026-11-26T15:00:00Z';storage.setItem(LIBRARY_PREFIX+id,JSON.stringify(saved,null,2));
+    const checks=Object.fromEntries(library.compareBackupEntry(text,id).checks.map(check=>[check.label,check.equal]));expect(checks).toEqual({'Saved entry text':false,'Project name':false,'Draft source':true,'Last-good source':true,'Saved track/section model':true,'Save time':false});
+  });
+  it('compares complete drafts even when a difference is beyond preview bounds',()=>{
+    const {library,storage}=setup(),id=library.save({...file(),code:'// '+ 'x'.repeat(25_000)+'a'}),text=library.exportBackup(),saved=JSON.parse(storage.getItem(LIBRARY_PREFIX+id)!);
+    saved.file.code=saved.file.code.slice(0,-1)+'b';storage.setItem(LIBRARY_PREFIX+id,JSON.stringify(saved));const comparison=library.compareBackupEntry(text,id);
+    expect(comparison.checks.find(check=>check.label==='Draft source')?.equal).toBe(false);expect(comparison.checks.find(check=>check.label==='Last-good source')?.equal).toBe(true);
+  });
+  it('treats line-ending-only differences as exact source differences',()=>{
+    const {library,storage}=setup(),id=library.save({...file(),code:'// draft\r\ndrums:s('}),text=library.exportBackup(),saved=JSON.parse(storage.getItem(LIBRARY_PREFIX+id)!);
+    saved.file.code=saved.file.code.replace(/\r\n/g,'\n');storage.setItem(LIBRARY_PREFIX+id,JSON.stringify(saved));expect(library.compareBackupEntry(text,id).checks.find(check=>check.label==='Draft source')?.equal).toBe(false);
+  });
+  it('reports missing/damaged saved entries separately and scopes malformed identities to library storage',()=>{
+    const {library,storage}=setup(),text=backup([{id:'../key',raw:'incoming'}]);expect(library.compareBackupEntry(text,'../key')).toMatchObject({saved:undefined,checks:[]});
+    storage.setItem('unrelated','keep');storage.setItem(LIBRARY_PREFIX+'../key','saved');const comparison=library.compareBackupEntry(text,'../key');expect(comparison.incoming.kind).toBe('damaged');expect(comparison.saved).toMatchObject({kind:'damaged',raw:'saved'});expect(comparison.checks).toEqual([{label:'Saved entry text',equal:false}]);expect(storage.getItem('unrelated')).toBe('keep');
+  });
+  it('rejects invalid incoming selections before reading storage and surfaces denied storage instead of claiming absence',()=>{
+    const {library,storage}=setup();let reads=0;storage.getItem=()=>{reads++;throw Error('Storage denied');};
+    expect(()=>library.compareBackupEntry('{','id')).toThrow('valid library backup');expect(()=>library.compareBackupEntry(backup([]),'id')).toThrow('not in the reviewed backup');expect(reads).toBe(0);
+    expect(()=>library.compareBackupEntry(backup([{id:'id',raw:'data'}]),'id')).toThrow('Storage denied');expect(reads).toBe(1);
+  });
   it('recovers a conflicting incoming draft under a new identity and name without evaluating or overwriting source',()=>{
     const original=setup(),source='\uFEFF// 🌊 café\r\nglobalThis.__recoveredExecuted=true;\ndrums:s("bd ~");\n';
     const id=original.library.save({...file(source,'Incoming'),code:'drums:s('}),text=original.library.exportBackup(),raw=original.storage.getItem(LIBRARY_PREFIX+id)!;

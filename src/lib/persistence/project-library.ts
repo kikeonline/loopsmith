@@ -1,5 +1,6 @@
 import { MAX_FILE_BYTES, readProjectFile, serializeProject, type ProjectFile, type RestoredProject } from './project-file';
 import { readLibraryBackup, serializeLibraryBackup, type BackupEntry, type LibraryBackup } from './library-backup';
+import { stableJSON } from '../project/metadata';
 export const LIBRARY_PREFIX = 'loopsmith.library.project.v1.';
 export const MAX_LIBRARY_COPIES = 30;
 const ENTRY_FORMAT = 'loopsmith-library-copy';
@@ -16,6 +17,7 @@ export interface BackupReview {
 }
 export interface BackupRestoreResult { added: number; identical: number; conflicts: number; pending: number; error: string }
 export type BackupInspection = BackupEntry & ({kind:'project';restored:RestoredProject;savedAt:string} | {kind:'damaged';error:string});
+export interface BackupComparison { incoming:BackupInspection; saved:BackupInspection|undefined; checks:{label:string;equal:boolean}[] }
 interface Entry { format: typeof ENTRY_FORMAT; version: 1; id: string; savedAt: string; file: ProjectFile }
 function key(id: string) { if (!validId(id)) throw new Error('Invalid saved-copy identity'); return LIBRARY_PREFIX+id; }
 function readEntry(id: string,raw: string): { entry: Entry; restored: RestoredProject } {
@@ -28,6 +30,9 @@ function readEntry(id: string,raw: string): { entry: Entry; restored: RestoredPr
 export function inspectBackupEntry(text: string,id: string): BackupInspection {
   const entry=readLibraryBackup(text).entries.find(entry=>entry.id===id);
   if(!entry)throw new Error('This entry is not in the reviewed backup. Review the backup again.');
+  return inspectStoredEntry(entry);
+}
+function inspectStoredEntry(entry:BackupEntry): BackupInspection {
   try {
     const decoded=readEntry(entry.id,entry.raw);
     return {...entry,kind:'project',restored:decoded.restored,savedAt:decoded.entry.savedAt};
@@ -55,6 +60,16 @@ export class ProjectLibrary {
   }
   save(file: ProjectFile): string {
     return this.saveCopy(file);
+  }
+  compareBackupEntry(text:string,id:string):BackupComparison {
+    const incoming=inspectBackupEntry(text,id),raw=this.storage.getItem(LIBRARY_PREFIX+id);
+    const saved=raw===null?undefined:inspectStoredEntry({id,raw});
+    const checks:BackupComparison['checks']=saved?[{label:'Saved entry text',equal:incoming.raw===saved.raw}]:[];
+    if(incoming.kind==='project'&&saved?.kind==='project') {
+      const a=incoming.restored.file,b=saved.restored.file;
+      checks.push({label:'Project name',equal:a.name===b.name},{label:'Draft source',equal:a.code===b.code},{label:'Last-good source',equal:a.lastGoodCode===b.lastGoodCode},{label:'Saved track/section model',equal:stableJSON(a.project)===stableJSON(b.project)},{label:'Save time',equal:incoming.savedAt===saved.savedAt});
+    }
+    return {incoming,saved,checks};
   }
   saveBackupCopy(text: string,id: string,name?: string): string {
     const incoming=inspectBackupEntry(text,id);
