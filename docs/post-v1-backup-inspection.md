@@ -2,6 +2,8 @@
 
 This phase follows [selective restore](post-v1-selective-restore.md). An incoming entry can conflict with a local copy, or be damaged, without being safe to restore. The backup review now exposes its data without opening it in the editor or overwriting the existing copy.
 
+The follow-up [incoming-project recovery phase](post-v1-incoming-recovery.md) adds an explicit action to save valid incoming projects under a fresh library identity, keeping existing versions and the current editor intact.
+
 ## Inspecting and recovering an entry
 
 Review a library backup, then choose **Inspect backup entry** on any row: missing, identical or conflicting. The inspection always describes the incoming file entry. It does not substitute data from the local copy sharing its identity. A valid saved-project envelope displays the current draft, saved date and last-good source when different. A syntax-error draft is still a valid saved project when its last-good model validates. Damaged entries show the validation reason and a read-only saved-data preview.

@@ -35,7 +35,7 @@ export function inspectBackupEntry(text: string,id: string): BackupInspection {
 }
 /** Immutable copies live in independent keys: saving a new copy never rewrites an index or old project. */
 export class ProjectLibrary {
-  constructor(private storage: LibraryStorage,private identity=() => crypto.randomUUID(),private now=() => new Date().toISOString()) {}
+  constructor(private storage: LibraryStorage,private identity:()=>string=() => crypto.randomUUID(),private now:()=>string=() => new Date().toISOString()) {}
   private ids() {
     const ids = new Set<string>();
     for (let i=0;i<this.storage.length;i++) { const name=this.storage.key(i); if (name?.startsWith(LIBRARY_PREFIX)) ids.add(name.slice(LIBRARY_PREFIX.length)); }
@@ -54,9 +54,18 @@ export class ProjectLibrary {
     return {copies,damaged};
   }
   save(file: ProjectFile): string {
+    return this.saveCopy(file);
+  }
+  saveBackupCopy(text: string,id: string,name?: string): string {
+    const incoming=inspectBackupEntry(text,id);
+    if(incoming.kind!=='project')throw new Error('This incoming entry is damaged. Download its entry backup for recovery instead.');
+    return this.saveCopy({...incoming.restored.file,name:name ?? incoming.restored.file.name},id);
+  }
+  private saveCopy(file: ProjectFile,excludedId?: string): string {
     const restored=readProjectFile(serializeProject(file,false));
     if(this.ids().length>=MAX_LIBRARY_COPIES) throw new Error(`The library supports ${MAX_LIBRARY_COPIES} saved copies. Export and remove a copy before saving another.`);
     const id=this.identity(), name=key(id);
+    if(id===excludedId)throw new Error('New saved-copy identity matches the incoming entry; try saving again.');
     if(this.storage.getItem(name)!==null) throw new Error('Saved-copy identity already exists; try saving again');
     const raw=JSON.stringify({format:ENTRY_FORMAT,version:1,id,savedAt:this.now(),file:restored.file} satisfies Entry);
     readEntry(id,raw);

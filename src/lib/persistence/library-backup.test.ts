@@ -13,6 +13,34 @@ function setup() {const storage=new MemoryStorage();return {storage,library:new 
 const backup=(entries:{id:string;raw:string}[])=>serializeLibraryBackup(entries,time);
 
 describe('portable library backups',()=>{
+  it('recovers a conflicting incoming draft under a new identity and name without evaluating or overwriting source',()=>{
+    const original=setup(),source='\uFEFF// 🌊 café\r\nglobalThis.__recoveredExecuted=true;\ndrums:s("bd ~");\n';
+    const id=original.library.save({...file(source,'Incoming'),code:'drums:s('}),text=original.library.exportBackup(),raw=original.storage.getItem(LIBRARY_PREFIX+id)!;
+    const storage=new MemoryStorage();storage.setItem(LIBRARY_PREFIX+id,'keep local');storage.setItem('loopsmith.project.v1','workspace');
+    const library=new ProjectLibrary(storage,()=> 'new-copy',()=> '2026-11-26T15:00:00Z'),saved=library.saveBackupCopy(text,id,'Recovered 🌊');
+    expect(saved).toBe('new-copy');const copy=library.list().copies[0],opened=library.open(saved,copy.raw);
+    expect(opened.file).toEqual({...JSON.parse(raw).file,name:'Recovered 🌊'});expect(JSON.parse(copy.raw).savedAt).toBe('2026-11-26T15:00:00Z');expect(storage.getItem(LIBRARY_PREFIX+id)).toBe('keep local');expect(storage.getItem('loopsmith.project.v1')).toBe('workspace');expect('__recoveredExecuted' in globalThis).toBe(false);
+  });
+  it('creates separate copies from missing or identical entries and validates the proposed name',()=>{
+    const original=setup(),id=original.library.save(file()),text=original.library.exportBackup(),target=setup();
+    expect(()=>target.library.saveBackupCopy(text,id,'x'.repeat(161))).toThrow('name');expect(target.storage.length).toBe(0);
+    const fresh=target.library.saveBackupCopy(text,id);expect(fresh).not.toBe(id);expect(target.library.list().copies[0].name).toBe('My loop');expect(target.storage.getItem(LIBRARY_PREFIX+id)).toBeNull();
+    const before=original.storage.getItem(LIBRARY_PREFIX+id);original.library.saveBackupCopy(text,id,'x'.repeat(160));expect(original.library.list().copies).toHaveLength(2);expect(original.storage.getItem(LIBRARY_PREFIX+id)).toBe(before);
+  });
+  it('rejects damaged, unknown and invalid backup entries before recovery writes',()=>{
+    const {library,storage}=setup();expect(()=>library.saveBackupCopy(backup([{id:'bad',raw:'broken'}]),'bad')).toThrow('damaged');expect(()=>library.saveBackupCopy(backup([]),'missing')).toThrow('not in the reviewed backup');expect(()=>library.saveBackupCopy('{','id')).toThrow('valid library backup');expect(storage.length).toBe(0);
+  });
+  it('keeps capacity/quota failures recoverable without evicting old data',()=>{
+    const original=setup(),id=original.library.save(file()),text=original.library.exportBackup(),target=setup();
+    for(let i=0;i<MAX_LIBRARY_COPIES;i++)target.storage.setItem(LIBRARY_PREFIX+i,'keep');expect(()=>target.library.saveBackupCopy(text,id)).toThrow('30 saved copies');expect(target.storage.length).toBe(30);
+    target.storage.removeItem(LIBRARY_PREFIX+'0');const write=target.storage.setItem.bind(target.storage);target.storage.setItem=()=>{throw Error('Quota');};expect(()=>target.library.saveBackupCopy(text,id)).toThrow('Quota');expect(target.storage.length).toBe(29);
+    target.storage.setItem=write;target.library.saveBackupCopy(text,id);expect(target.storage.length).toBe(30);expect(target.storage.getItem(LIBRARY_PREFIX+'1')).toBe('keep');
+  });
+  it('rejects generated identities matching the incoming entry or another local copy',()=>{
+    const original=setup(),id=original.library.save(file()),text=original.library.exportBackup(),storage=new MemoryStorage();
+    expect(()=>new ProjectLibrary(storage,()=>id).saveBackupCopy(text,id)).toThrow('matches the incoming');expect(storage.length).toBe(0);
+    storage.setItem(LIBRARY_PREFIX+'occupied','keep');expect(()=>new ProjectLibrary(storage,()=> 'occupied').saveBackupCopy(text,id)).toThrow('already exists');expect(storage.getItem(LIBRARY_PREFIX+'occupied')).toBe('keep');
+  });
   it('inspects incoming projects without reading or mutating a conflicting local copy or executing source',()=>{
     const {library,storage}=setup(),source='\uFEFF// café 🌊\r\nglobalThis.__inspectionExecuted=true;\ndrums:s("bd ~");\r\n';
     const id=library.save({...file(source,'Incoming'),code:'drums:s('}),text=library.exportBackup(),original=storage.getItem(LIBRARY_PREFIX+id)!;

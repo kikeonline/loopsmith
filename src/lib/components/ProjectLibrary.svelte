@@ -30,6 +30,14 @@
   function cancelBackup() { backupRequest++;readingBackup=false;backupText='';review=undefined;restoreIds=[];inspection=undefined;inspectionTrigger=undefined;message='Backup review cleared. No copies were changed.'; }
   function inspectEntry(id:string,trigger:HTMLButtonElement){inspection=undefined;inspectionTrigger=trigger;inspection=inspectBackupEntry(backupText,id);}
   function closeInspection(){inspection=undefined;if(inspectionTrigger?.isConnected)inspectionTrigger.focus();inspectionTrigger=undefined;}
+  function saveIncomingCopy(id:string,name:string):string {
+    error='';message='';
+    const savedId=library().saveBackupCopy(backupText,id,name);
+    // A completed write stays successful even if the subsequent listing read fails.
+    try{refresh();selectedId=savedId;}
+    catch(cause){error=`New copy saved, but the library could not refresh: ${cause instanceof Error ? cause.message : String(cause)}. Use Refresh library to list it.`;}
+    return savedId;
+  }
   async function readBackup(event:Event) {
     const input=event.currentTarget as HTMLInputElement,file=input.files?.[0];input.value='';if(!file)return;
     const request=++backupRequest;readingBackup=true;backupText='';review=undefined;restoreIds=[];inspection=undefined;inspectionTrigger=undefined;error='';message='';
@@ -75,7 +83,7 @@
         <div class="library-tools"><button class="flag" disabled={!review.additions} onclick={()=>{restoreIds=review!.items.filter(item=>item.status==='add').map(item=>item.entry.id);}}>Select all missing entries</button><button class="flag" disabled={!selectedRestoreCount} onclick={()=>{restoreIds=[];}}>Clear restore selection</button></div>
         <p class="hint" aria-live="polite">Selected to restore: {selectedRestoreCount}. Counts after restore refer to this selection. Unselected entries remain in your backup file.</p>
         <ul>{#each review.items as item,index (item.entry.id)}<li>{#if item.status==='add'}<label class="backup-choice"><input type="checkbox" aria-label={`Restore entry ${index+1}: ${item.name}`} checked={restoreIds.includes(item.entry.id)} onchange={event=>{restoreIds=event.currentTarget.checked?[...restoreIds,item.entry.id]:restoreIds.filter(id=>id!==item.entry.id);}} /><span><strong>{item.name}</strong> · {item.entry.id.slice(0,80)||'(empty identity)'} · Add{item.damaged?' · recovery data':''}</span></label>{:else}<strong>{item.name}</strong> · {item.entry.id.slice(0,80)||'(empty identity)'} · {item.status==='identical'?'Already saved':'Conflict: keep existing'}{item.damaged?' · recovery data':''}{/if}<button class="flag" aria-label={`Inspect backup entry ${index+1}: ${item.name}`} aria-expanded={inspection?.id===item.entry.id} onclick={event=>act(()=>inspectEntry(item.entry.id,event.currentTarget))}>Inspect backup entry</button></li>{/each}</ul>
-        {#if inspection}{#key inspection}<BackupEntryInspector entry={inspection} close={closeInspection} />{/key}{/if}
+        {#if inspection}{#key inspection}<BackupEntryInspector entry={inspection} close={closeInspection} saveCopy={saveIncomingCopy} />{/key}{/if}
         {#if selectedRestoreCount>review.available}<p class="hint">Not enough free slots. Select fewer entries, or export and remove copies. Nothing will be restored until the selection fits.</p>{/if}
         <button class="flag" disabled={!selectedRestoreCount||selectedRestoreCount>review.available} onclick={()=>act(restoreBackup)}>Restore missing library entries</button>
       </section>
